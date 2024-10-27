@@ -9,7 +9,7 @@ public class Config {
     
     // GUI
     public static final String TITLE = "GB ROM Tool";
-    public static final int WINDOW_SIZE_X = 400;
-    public static final int WINDOW_SIZE_Y = 300;
+    public static final int WINDOW_SIZE_X = 800;
+    public static final int WINDOW_SIZE_Y = 400;
 
 }
