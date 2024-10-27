@@ -33,6 +33,7 @@ public class UserInterface {
     private final Map<String, JLabel> valueLabels;
     private final FileHandler fileHandler;
     private final DatabaseQuery dbQuery;
+    private final CollectionManager collectionManager;
 
     // Constants for field names to avoid typos
     private static final String FILE_NAME = "File";
@@ -55,6 +56,7 @@ public class UserInterface {
         valueLabels = new HashMap<>();
         fileHandler = new FileHandler();
         dbQuery = new DatabaseQuery(DatabaseManager.getInstance());
+        collectionManager = new CollectionManager(dbQuery, mainFrame);
 
         mainFrame.setTitle(Config.TITLE);
         mainFrame.setSize(Config.WINDOW_SIZE_X, Config.WINDOW_SIZE_Y);
@@ -92,7 +94,8 @@ public class UserInterface {
             // TODO: Load selection from list of ROMs currently in Collection table of database
         });
         saveFileButton.addActionListener((ActionEvent e) -> {
-            // TODO: Save current ROM's info to Collection table in database
+            String defaultName = fileHandler.getCurrentFileName().replaceFirst("[.][^.]+$", "");
+            collectionManager.saveRomToCollection(fileHandler.getCurrentRomReader(), defaultName);
         });
     }
 
