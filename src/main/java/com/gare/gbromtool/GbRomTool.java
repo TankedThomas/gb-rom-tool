@@ -1,5 +1,6 @@
 package com.gare.gbromtool;
 
+import java.sql.SQLException;
 import javax.swing.*;
 
 /**
@@ -17,8 +18,16 @@ public class GbRomTool {
         }
 
         SwingUtilities.invokeLater(() -> {
-            UserInterface gui = new UserInterface();
-            gui.show();
+            try {
+                UserInterface gui = new UserInterface();
+                gui.show();
+            } catch (SQLException e) {
+                System.err.println("Failed to initialize database: " + e.getMessage());
+                JOptionPane.showMessageDialog(null,
+                        "Failed to initialize database: " + e.getMessage(),
+                        "Database Error",
+                        JOptionPane.ERROR_MESSAGE);
+            }
         });
     }
 }
