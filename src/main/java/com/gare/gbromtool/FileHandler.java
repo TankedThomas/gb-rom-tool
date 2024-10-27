@@ -6,6 +6,12 @@ import java.io.IOException;
 import javax.swing.JFileChooser;
 import javax.swing.filechooser.FileNameExtensionFilter;
 
+/**
+ * This class handles the loading of files and calls RomReader to extract their
+ * information.
+ *
+ * @author Thomas Robinson 23191795
+ */
 public class FileHandler {
 
     private final JFileChooser chooseRom;
@@ -30,9 +36,19 @@ public class FileHandler {
         CANCELLED
     }
 
+    // Getter for current filename
+    public String getCurrentFileName() {
+        return currentRom != null ? currentRom.getName() : "";
+    }
+
     // Getter for current ROM title
     public String getCurrentRomTitle() {
-        return currentRom != null ? currentRom.getTitle() : "";
+        return romReader != null ? romReader.parseTitle().getTitle() : "";
+    }
+
+    // Getter for current Manufacturer Code
+    public String getCurrentManufacturerCode() {
+        return romReader != null ? romReader.parseTitle().getManufacturerCode() : "";
     }
 
     // Getter for current RomReader
