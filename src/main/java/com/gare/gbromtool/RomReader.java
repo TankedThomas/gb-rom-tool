@@ -5,18 +5,16 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.Arrays;
-import javax.swing.JFileChooser;
+import java.util.stream.Collectors;
 
 /**
- * This class contains methods for reading ROMs.
+ * This class contains methods for reading ROM data.
  *
  * @author Thomas Robinson 23191795
  */
 public class RomReader {
 
     private final byte[] romData;
-    private final JFileChooser chooseRom;
-    private RomReader romReader;
     byte CGBFlag[];
     boolean isNewCode;
 
@@ -28,8 +26,12 @@ public class RomReader {
         }
     }
 
+    /**
+     * This method extracts the Logo from the ROM header.
+     *
+     * @return true if the logo matches, false otherwise
+     */
     public boolean getLogo() {
-        // Extract the Logo from the ROM header
         // The Logo is stored at offset 0x104 - 0x133
         byte[] logo = new byte[24];
         // Store offset as int
@@ -55,30 +57,31 @@ public class RomReader {
         return Arrays.equals(Arrays.copyOfRange(logo, offsetStart, offsetEnd), checkLogo);
     }
 
+    /**
+     * This method extracts the Title from the ROM header.
+     *
+     * @return the Title as a string
+     */
     public String getTitle() {
-        // Extract the Title from the ROM header
         // The Title is stored at offset 0x134 - 0x142 in the ROM
-        byte[] titleBytes = new byte[16];  // 16 bytes for title
-        String title;
+        byte[] titleBytes;  // 16 bytes for title
+        int titleLength = (romData[0x143] == (byte) 0x80 || romData[0x143] == (byte) 0xC0) ? 15 : 16;
 
-        // Check for CGB flag
-        if (romData[0x143] == 0x80 | romData[0x143] == 0xC0) {
-            // CGB flag exists - copy 15 title bytes into array
-            System.arraycopy(romData, 0x134, titleBytes, 0, 15);
-            getCGBFlag();
-        } else {
-            // CGB flag does not exist - copy 16 title bytes into array
-            System.arraycopy(romData, 0x134, titleBytes, 0, 16);
-        }
+        titleBytes = new byte[titleLength];
+        System.arraycopy(romData, 0x134, titleBytes, 0, titleLength);
 
-        // Convert title to string and remove empty bytes
-        title = new String(titleBytes, StandardCharsets.US_ASCII).replace("\0", "").trim();
-
-        return title;
+        // Convert to string and clean up
+        return new String(titleBytes, StandardCharsets.US_ASCII)
+                .replaceAll("[^\\x20-\\x7E]", "") // Remove non-printable ASCII chars
+                .trim();
     }
 
+    /**
+     * This method extracts the CGB Flag from the ROM header.
+     *
+     * @return the CGB Flag as a byte
+     */
     public byte[] getCGBFlag() {
-        // Extract the CGB Flag from the ROM header
         // If it exists, the CGB Flag is stored at offset 0x143 in the ROM
         CGBFlag = new byte[1];
 
@@ -87,16 +90,28 @@ public class RomReader {
         return CGBFlag;
     }
 
+    private boolean isCGBCompatible() {
+        return romData[0x143] == (byte) 0x80 || romData[0x143] == (byte) 0xC0;
+    }
+
+    /**
+     * This method extracts the SGB flag from the ROM header.
+     *
+     * @return true if the flag is present, false otherwise
+     */
     public boolean getSGBFlag() {
-        // Extract the SGB flag from the ROM header
         // The SGB flag is stored at offset 0x146 in the ROM
-        // 0x03 is the only valid flag - everything else is ignored        
+        // 0x03 is the only valid flag - everything else is ignored      
         return Byte.toUnsignedInt(romData[0x146]) == 0x03;
     }
 
+    /**
+     * This method extracts the Cartridge Type from the ROM header.
+     *
+     * @return the Cartridge Type as a string
+     */
     public String getCartridgeType() {
-        // Extract the cartridge type from the ROM header
-        // The cartridge type is stored at offset 0x147 in the ROM
+        // The Cartridge Type is stored at offset 0x147 in the ROM
         byte typeByte[] = new byte[1];
 
         String cartridgeType;
@@ -108,11 +123,19 @@ public class RomReader {
         return cartridgeType;
     }
 
+    /**
+     * This method extracts the Licensee Code from the ROM header.
+     *
+     * If the Old Licensee Code is 0x33, the New Licensee Code is used instead
+     *
+     * The Licensee Code is stored at either 0x14B (old code)
+     * or 0x144-0x145 (new code)
+     *
+     * The New Licensee Code should be converted to ASCII when returned
+     *
+     * @return the Licensee Code as 1-2 bytes, depending on type
+     */
     public byte[] getLicenseeCode() {
-
-        // Extract the Licensee Code from the ROM header
-        // The Licensee Code is stored at either 0x14B (old code) 
-        // or 0x144-0x145 (new code)
         byte licenseeCode[] = new byte[2];
 
         if (romData[0x14B] == 0x33) {
@@ -126,27 +149,49 @@ public class RomReader {
         return licenseeCode;
     }
 
+    /**
+     * This method extracts the ROM size from the ROM header as an integer.
+     * ROM size is stored as hexadecimal but only 00-08 are used,
+     * so using an integer simplifies this method.
+     *
+     * @return the ROM size as an unsigned integer
+     */
     public int getROMSize() {
-        // Extract the ROM size from the ROM header
         // The ROM size is stored at offset 0x148 in the ROM
-
         return Byte.toUnsignedInt(romData[0x148]);
     }
 
+    /**
+     * This method extracts the RAM size from the ROM header as an integer.
+     * RAM size is stored as a hexadecimal but only 00-05 are used,
+     * so using an integer simplifies this method.
+     *
+     * @return the ROM size as an unsigned integer
+     */
     public int getRAMSize() {
-        // Extract the RAM size from the ROM header
         // The RAM size is stored at offset 0x149 in the ROM
         return Byte.toUnsignedInt(romData[0x149]);
     }
 
+    /**
+     * This method extracts the Destination Code from the ROM header as an
+     * integer.
+     * Destination Code is stored as hexadecimal but only 00-01 are used,
+     * so using an integer simplifies this method.
+     *
+     * @return the Destination Code as an unsigned integer
+     */
     public int getDestinationCode() {
-        // Extract the Destination Code from the ROM header
         // The Destination Code is stored at offset 0x14A in the ROM
         return Byte.toUnsignedInt(romData[0x14A]);
     }
 
+    /**
+     * This method extracts the Mask ROM version number from the ROM header.
+     *
+     * @return the Mask ROM Version as a byte
+     */
     public byte[] getMaskVersion() {
-        // Extract the Mask ROM version number from the ROM header
         // The Mask ROM version number is stored at offset 0x14C
         byte maskVersion[] = new byte[1];
 
@@ -155,11 +200,15 @@ public class RomReader {
         return maskVersion;
     }
 
+    /**
+     * This method extracts the Header Checksum from the ROM Header.
+     * The Header Checksum is stored at offset 0x14D
+     * This byte contains an 8-bit checksum computed from the cartridge header
+     * bytes $0134–014C
+     *
+     * @return the Header Checksum as a byte
+     */
     public byte[] getHeaderChecksum() {
-        // Extract the Header Checksum from the ROM Header
-        // The Header Checksum is stored at offset 0x14D
-        // This byte contains an 8-bit checksum computed from the cartridge header bytes $0134–014C
-
         // It might be possible to check the checksum's validity in realtime
         // using the same method that the boot ROM uses:
         // uint8_t checksum = 0;
@@ -173,16 +222,73 @@ public class RomReader {
         return headerChecksum;
     }
 
+    /**
+     * This method extracts the Global Checksum from the ROM Header.
+     * The Global Checksum is stored at offset 0x14E - 0x14F
+     * These bytes contains a 16-bit checksum computed from all bytes in the ROM
+     * (except these checksum bytes)
+     *
+     * @return the Global Checksum as two bytes
+     */
     public byte[] getGlobalChecksum() {
-        // Extract the Header Checksum from the ROM Header
-        // The Header Checksum is stored at offset 0x14E - 0x14F
-        // This byte contains an 8-bit checksum computed from the cartridge header bytes $0134–014C
-
         byte globalChecksum[] = new byte[2];
 
         System.arraycopy(romData, 0x14E, globalChecksum, 0, 2);
 
         return globalChecksum;
+    }
+
+    private String cleanTitle(String rawTitle) {
+        // Remove trailing nulls and spaces
+        String cleaned = rawTitle.replaceAll("\\x00+$", "")
+                .replaceAll("((_)_+|(\\x00)\\x00+|(\\s)\\s+)", "$2$3$4")
+                .replaceAll("\\x00", "_")
+                .trim();
+
+        // Filter non-printable characters
+        return cleaned.chars()
+                .filter(ch -> Character.isLetterOrDigit(ch) || ch == ' ' || ch == '_' || ch == '-')
+                .mapToObj(ch -> String.valueOf((char) ch))
+                .collect(Collectors.joining())
+                .trim();
+    }
+
+    /**
+     * This method splits the manufacturer code from the ROM title.
+     *
+     * Attempts to solve the problem where some CGB ROMs have a manufacturer
+     * code added to the end of the allotted title string without any obvious
+     * separation marks in the ROM header.
+     *
+     * Based on code Python code from:
+     * https://github.com/lesserkuma/FlashGBX/blob/master/FlashGBX/RomFileDMG.py
+     *
+     * @return the ROM title and manufacturer code as two strings in a RomTitle
+     */
+    public RomTitle parseTitle() {
+        boolean isCGB = (romData[0x143] == (byte) 0x80 || romData[0x143] == (byte) 0xC0);
+        String rawTitle = getTitle();
+
+        if (isCGB && rawTitle.length() >= 15) {
+            String potentialCode = rawTitle.substring(rawTitle.length() - 4);
+            if (isValidManufacturerCode(potentialCode)) {
+                return new RomTitle(
+                        rawTitle.substring(0, rawTitle.length() - 4).trim(),
+                        potentialCode
+                );
+            }
+        }
+
+        return new RomTitle(rawTitle, "");
+    }
+
+    private boolean isValidManufacturerCode(String code) {
+        if (code.length() != 4) {
+            return false;
+        }
+        char first = code.charAt(0);
+        char last = code.charAt(3);
+        return "ABHKV".indexOf(first) >= 0 && "ABDEFIJKPSUXY".indexOf(last) >= 0;
     }
 
 }
