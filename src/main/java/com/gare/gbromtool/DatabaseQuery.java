@@ -146,4 +146,84 @@ public class DatabaseQuery {
             throw e;
         }
     }
+
+    /**
+     * Saves ROM information to Collection table.
+     *
+     * @param name User-provided name for the ROM
+     * @param title ROM title from header
+     * @param typeCode Cartridge type code
+     * @param romRev ROM revision number
+     * @param romSizeCode ROM size code
+     * @param ramSizeCode RAM size code
+     * @param sgbFlag Super Game Boy flag
+     * @param cgbFlag Game Boy Color flag
+     * @param destCode Destination code
+     * @param licenseeCode Licensee code
+     * @param headerChecksum Header checksum
+     * @param globalChecksum Global checksum
+     * @return true if save was successful, false otherwise
+     * @throws SQLException if database operation fails
+     */
+    public boolean saveRomToCollection(
+            String name,
+            String title,
+            byte[] typeCode,
+            byte[] romRev,
+            int romSizeCode,
+            int ramSizeCode,
+            boolean sgbFlag,
+            byte[] cgbFlag,
+            int destCode,
+            byte[] licenseeCode,
+            byte[] headerChecksum,
+            byte[] globalChecksum) throws SQLException {
+
+        String sql = """
+                    INSERT INTO Collection (
+                        title, name, type_code, rom_rev, rom_size_code,
+                        ram_size_code, sgb_flag, cgb_flag, dest_code,
+                        licensee_code, head_chksm, global_chksm
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """;
+
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, title);
+            stmt.setString(2, name);
+            stmt.setBytes(3, typeCode);
+            stmt.setBytes(4, romRev);
+            stmt.setInt(5, romSizeCode);
+            stmt.setInt(6, ramSizeCode);
+            stmt.setBoolean(7, sgbFlag);
+            stmt.setBytes(8, cgbFlag);
+            stmt.setInt(9, destCode);
+            stmt.setBytes(10, licenseeCode);
+            stmt.setBytes(11, headerChecksum);
+            stmt.setBytes(12, globalChecksum);
+
+            int rowsAffected = stmt.executeUpdate();
+            return rowsAffected > 0;
+        }
+    }
+
+    /**
+     * Checks if a ROM with the given title already exists in Collection.
+     *
+     * @param title The ROM title to check
+     * @return true if the ROM exists, false otherwise
+     * @throws SQLException if database operation fails
+     */
+    public boolean romExistsInCollection(String title) throws SQLException {
+        String sql = "SELECT COUNT(*) FROM Collection WHERE title = ?";
+
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, title);
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                return rs.getInt(1) > 0;
+            }
+        }
+        return false;
+    }
+
 }
