@@ -7,6 +7,11 @@ import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 
+/**
+ * This class draws the user interface and handles GUI interactions.
+ *
+ * @author Thomas Robinson 23191795
+ */
 public class UserInterface {
 
     private final JFrame mainFrame;
@@ -33,8 +38,12 @@ public class UserInterface {
 
         // Add listeners
         selectFileButton.addActionListener((ActionEvent e) -> {
-            selectFile();
+            handleFileSelection();
         });
+    }
+
+    public void show() {
+        mainFrame.setVisible(true);
     }
 
     private void handleFileSelection() {
