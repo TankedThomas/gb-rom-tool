@@ -5,7 +5,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.Arrays;
-import java.util.stream.Collectors;
+import java.util.HexFormat;
 
 /**
  * This class contains methods for reading ROM data.
@@ -15,8 +15,8 @@ import java.util.stream.Collectors;
 public class RomReader {
 
     private final byte[] romData;
+    private final RomChecksum checksum;
     byte CGBFlag[];
-    boolean isNewCode;
 
     public RomReader(File romFile) throws IOException {
         // Read the ROM file into the romData byte array
@@ -24,6 +24,7 @@ public class RomReader {
         if (this.romData.length < 0x150) {
             throw new IOException("File is too small to be a valid Game Boy ROM");
         }
+        this.checksum = new RomChecksum(this.romData);
     }
 
     /**
@@ -32,11 +33,8 @@ public class RomReader {
      * @return true if the logo matches, false otherwise
      */
     public boolean getLogo() {
-        // The Logo is stored at offset 0x104 - 0x133
-        byte[] logo = new byte[24];
-        // Store offset as int
-        int offsetStart = 0x104;
-        int offsetEnd = 0x133;
+        // The Logo is stored at offset 0x104 - 0x133 (48 bytes)
+        byte[] logo = Arrays.copyOfRange(romData, 0x104, 0x134);
 
         // The Logo expected in the ROM header to check against
         byte[] checkLogo = {
@@ -48,13 +46,11 @@ public class RomReader {
             (byte) 0xDD, (byte) 0xDC, (byte) 0x99, (byte) 0x9F, (byte) 0xBB, (byte) 0xB9, (byte) 0x33, (byte) 0x3E
         };
 
-        // Check if the Logo can fit starting from the offset
-        if (offsetEnd > logo.length) {
-            return false; // Out of bounds
-        }
+        System.out.println("Extracted logo bytes: " + HexFormat.of().formatHex(logo));
+        System.out.println("Expected logo bytes: " + HexFormat.of().formatHex(checkLogo));
 
         // Compare bytes at 0x104 - 0x133 to expected Logo
-        return Arrays.equals(Arrays.copyOfRange(logo, offsetStart, offsetEnd), checkLogo);
+        return Arrays.equals(logo, checkLogo);
     }
 
     /**
@@ -64,16 +60,18 @@ public class RomReader {
      */
     public String getTitle() {
         // The Title is stored at offset 0x134 - 0x142 in the ROM
-        byte[] titleBytes;  // 16 bytes for title
-        int titleLength = (romData[0x143] == (byte) 0x80 || romData[0x143] == (byte) 0xC0) ? 15 : 16;
+        byte[] titleBytes = new byte[15];  // Always get 15 bytes for GBC titles
+        System.arraycopy(romData, 0x134, titleBytes, 0, 15);
 
-        titleBytes = new byte[titleLength];
-        System.arraycopy(romData, 0x134, titleBytes, 0, titleLength);
+        // Debug output of raw bytes
+        System.out.println("Raw title bytes: " + HexFormat.of().formatHex(titleBytes));
 
         // Convert to string and clean up
-        return new String(titleBytes, StandardCharsets.US_ASCII)
-                .replaceAll("[^\\x20-\\x7E]", "") // Remove non-printable ASCII chars
-                .trim();
+        return new String(titleBytes, StandardCharsets.US_ASCII);
+    }
+
+    public RomTitle parseTitle() {
+        return RomTitle.parseTitle(romData);
     }
 
     /**
@@ -88,10 +86,6 @@ public class RomReader {
         System.arraycopy(romData, 0x143, CGBFlag, 0, 1);
 
         return CGBFlag;
-    }
-
-    private boolean isCGBCompatible() {
-        return romData[0x143] == (byte) 0x80 || romData[0x143] == (byte) 0xC0;
     }
 
     /**
@@ -113,7 +107,6 @@ public class RomReader {
     public String getCartridgeType() {
         // The Cartridge Type is stored at offset 0x147 in the ROM
         byte typeByte[] = new byte[1];
-
         String cartridgeType;
 
         System.arraycopy(romData, 0x147, typeByte, 0, 1);
@@ -136,14 +129,14 @@ public class RomReader {
      * @return the Licensee Code as 1-2 bytes, depending on type
      */
     public byte[] getLicenseeCode() {
-        byte licenseeCode[] = new byte[2];
+        byte licenseeCode[];
 
         if (romData[0x14B] == 0x33) {
+            licenseeCode = new byte[2];
             System.arraycopy(romData, 0x144, licenseeCode, 0, 2);
-            isNewCode = true;
         } else {
+            licenseeCode = new byte[1];
             System.arraycopy(romData, 0x14B, licenseeCode, 0, 1);
-            isNewCode = false;
         }
 
         return licenseeCode;
@@ -209,17 +202,19 @@ public class RomReader {
      * @return the Header Checksum as a byte
      */
     public byte[] getHeaderChecksum() {
-        // It might be possible to check the checksum's validity in realtime
-        // using the same method that the boot ROM uses:
-        // uint8_t checksum = 0;
-        //for (uint16_t address = 0x0134; address <= 0x014C; address++) {
-        //    checksum = checksum - rom[address] - 1;
-        //}
         byte headerChecksum[] = new byte[1];
 
         System.arraycopy(romData, 0x14D, headerChecksum, 0, 1);
 
         return headerChecksum;
+    }
+
+    public boolean verifyHeaderChecksum() {
+        return checksum.verifyHeaderChecksum();
+    }
+
+    public String getStoredHeaderChecksum() {
+        return checksum.getStoredHeaderChecksum();
     }
 
     /**
@@ -238,57 +233,11 @@ public class RomReader {
         return globalChecksum;
     }
 
-    private String cleanTitle(String rawTitle) {
-        // Remove trailing nulls and spaces
-        String cleaned = rawTitle.replaceAll("\\x00+$", "")
-                .replaceAll("((_)_+|(\\x00)\\x00+|(\\s)\\s+)", "$2$3$4")
-                .replaceAll("\\x00", "_")
-                .trim();
-
-        // Filter non-printable characters
-        return cleaned.chars()
-                .filter(ch -> Character.isLetterOrDigit(ch) || ch == ' ' || ch == '_' || ch == '-')
-                .mapToObj(ch -> String.valueOf((char) ch))
-                .collect(Collectors.joining())
-                .trim();
+    public boolean verifyGlobalChecksum() {
+        return checksum.verifyGlobalChecksum();
     }
 
-    /**
-     * This method splits the manufacturer code from the ROM title.
-     *
-     * Attempts to solve the problem where some CGB ROMs have a manufacturer
-     * code added to the end of the allotted title string without any obvious
-     * separation marks in the ROM header.
-     *
-     * Based on code Python code from:
-     * https://github.com/lesserkuma/FlashGBX/blob/master/FlashGBX/RomFileDMG.py
-     *
-     * @return the ROM title and manufacturer code as two strings in a RomTitle
-     */
-    public RomTitle parseTitle() {
-        boolean isCGB = (romData[0x143] == (byte) 0x80 || romData[0x143] == (byte) 0xC0);
-        String rawTitle = getTitle();
-
-        if (isCGB && rawTitle.length() >= 15) {
-            String potentialCode = rawTitle.substring(rawTitle.length() - 4);
-            if (isValidManufacturerCode(potentialCode)) {
-                return new RomTitle(
-                        rawTitle.substring(0, rawTitle.length() - 4).trim(),
-                        potentialCode
-                );
-            }
-        }
-
-        return new RomTitle(rawTitle, "");
+    public String getStoredGlobalChecksum() {
+        return checksum.getStoredGlobalChecksum();
     }
-
-    private boolean isValidManufacturerCode(String code) {
-        if (code.length() != 4) {
-            return false;
-        }
-        char first = code.charAt(0);
-        char last = code.charAt(3);
-        return "ABHKV".indexOf(first) >= 0 && "ABDEFIJKPSUXY".indexOf(last) >= 0;
-    }
-
 }
