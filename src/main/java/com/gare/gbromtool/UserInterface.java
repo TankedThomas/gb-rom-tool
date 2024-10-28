@@ -1,22 +1,13 @@
 package com.gare.gbromtool;
 
-import java.awt.BorderLayout;
-import java.awt.Color;
-import java.awt.FlowLayout;
-import java.awt.Font;
-import java.awt.GridBagConstraints;
-import java.awt.GridBagLayout;
-import java.awt.Insets;
+import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Map;
-import javax.swing.BorderFactory;
-import javax.swing.JButton;
-import javax.swing.JFrame;
-import javax.swing.JLabel;
-import javax.swing.JOptionPane;
-import javax.swing.JPanel;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import javax.swing.*;
 
 /**
  * This class draws the user interface and handles GUI interactions.
@@ -35,21 +26,26 @@ public class UserInterface {
     private final DatabaseQuery dbQuery;
     private final CollectionManager collectionManager;
 
-    // Constants for field names to avoid typos
-    private static final String FILE_NAME = "File";
-    private static final String TITLE = "Title";
-    private static final String CODE = "Code";
-    private static final String REVISION = "Revision";
-    private static final String PUBLISHER = "Publisher";
-    private static final String CART_TYPE = "Cart Type";
-    private static final String DESTINATION = "Destination";
-    private static final String ROM_SIZE = "ROM Size";
-    private static final String RAM_SIZE = "RAM Size";
-    private static final String GBC_COMPATIBLE = "Color Compatible";
-    private static final String SGB_FUNCTION = "SGB Functionality";
-    private static final String HDR_CHKSUM = "Header Checksum";
-    private static final String GBL_CHKSUM = "Global Checksum";
-    private static final String BOOT_LOGO = "Boot Logo";
+    // GUI constants
+    public static final String WINDOW_TITLE = "GB ROM Tool";
+    public static final int WINDOW_SIZE_X = 800;
+    public static final int WINDOW_SIZE_Y = 400;
+
+    // Field name constants
+    public static final String FILE_NAME = "File";
+    public static final String TITLE = "Title";
+    public static final String CODE = "Code";
+    public static final String REVISION = "Revision";
+    public static final String PUBLISHER = "Publisher";
+    public static final String CART_TYPE = "Cart Type";
+    public static final String DESTINATION = "Destination";
+    public static final String ROM_SIZE = "ROM Size";
+    public static final String RAM_SIZE = "RAM Size";
+    public static final String GBC_COMPATIBLE = "Color Compatible";
+    public static final String SGB_FUNCTION = "SGB Functionality";
+    public static final String HDR_CHKSUM = "Header Checksum";
+    public static final String GBL_CHKSUM = "Global Checksum";
+    public static final String BOOT_LOGO = "Boot Logo";
 
     public UserInterface() throws SQLException {
         mainFrame = new JFrame();
@@ -58,8 +54,8 @@ public class UserInterface {
         dbQuery = new DatabaseQuery(DatabaseManager.getInstance());
         collectionManager = new CollectionManager(dbQuery, mainFrame);
 
-        mainFrame.setTitle(Config.TITLE);
-        mainFrame.setSize(Config.WINDOW_SIZE_X, Config.WINDOW_SIZE_Y);
+        mainFrame.setTitle(WINDOW_TITLE);
+        mainFrame.setSize(WINDOW_SIZE_X, WINDOW_SIZE_Y);
         mainFrame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         mainFrame.setLocationRelativeTo(null);
 
@@ -96,6 +92,11 @@ public class UserInterface {
         saveFileButton.addActionListener((ActionEvent e) -> {
             String defaultName = fileHandler.getCurrentFileName().replaceFirst("[.][^.]+$", "");
             collectionManager.saveRomToCollection(fileHandler.getCurrentRomReader(), defaultName);
+            try {
+                dbQuery.printAllRoms();
+            } catch (SQLException ex) {
+                Logger.getLogger(UserInterface.class.getName()).log(Level.SEVERE, null, ex);
+            }
         });
     }
 
