@@ -29,12 +29,17 @@ public class DatabaseManager {
             dropDatabase();
             instance = new DatabaseManager();
         }
+        if (instance.conn == null) {
+            throw new SQLException("Failed to establish database connection");
+        }
         return instance;
     }
 
     private DatabaseManager() throws SQLException {
         establishConnection();
-        createTables();
+        if (conn != null) {
+            createTables();
+        }
     }
 
     public Connection getConnection() {
@@ -48,10 +53,13 @@ public class DatabaseManager {
                 conn = DriverManager.getConnection(JDBC_URL, USER_NAME, PASSWORD);
                 System.out.println("Connected to the embedded database successfully.");
             } catch (ClassNotFoundException e) {
-                System.out.println("Derby driver not found: " + e.getMessage());
-                throw new SQLException("Derby driver not found", e);
+                String message = "Derby driver not found: " + e.getMessage();
+                System.out.println(message);
+                throw new SQLException(message, e);
             } catch (SQLException ex) {
-                System.out.println("Error connecting to the database: " + ex.getMessage());
+                String message = "Error connecting to the database: " + ex.getMessage();
+                System.out.println(message);
+                throw ex;
             }
         }
     }
@@ -91,18 +99,23 @@ public class DatabaseManager {
         }
 
         try {
-            DriverManager.getConnection("jdbc:derby:GbRomDB;shutdown=true");
-        } catch (SQLException e) {
-            // Shutdown always throws an exception, this is normal
-            if (e.getSQLState().equals("08006")) {
-                System.out.println("Database shut down normally");
+            // Attempt to shut down the database properly
+            try {
+                DriverManager.getConnection("jdbc:derby:GbRomDB;shutdown=true");
+            } catch (SQLException e) {
+                // Shutdown always throws an exception, this is normal
+                if (e.getSQLState().equals("08006")) {
+                    System.out.println("Database shut down normally");
+                }
             }
-        }
 
-        // Delete database files
-        File dbDirectory = new File("GbRomDB");
-        if (dbDirectory.exists()) {
-            deleteDirectory(dbDirectory);
+            // Delete database files
+            File dbDirectory = new File("GbRomDB");
+            if (dbDirectory.exists()) {
+                deleteDirectory(dbDirectory);
+            }
+        } catch (Exception e) {
+            System.out.println("Error during database cleanup: " + e.getMessage());
         }
     }
 
@@ -204,7 +217,7 @@ public class DatabaseManager {
             // Create Collection table if it doesn't exist (blank by default)
             if (!tableExists("Collection")) {
                 stmt.executeUpdate("CREATE TABLE Collection ("
-                        + "title VARCHAR(100) PRIMARY KEY,"
+                        + "title VARCHAR(100),"
                         + "name VARCHAR(200),"
                         + "type_code CHAR(2) FOR BIT DATA,"
                         + "rom_rev CHAR(2) FOR BIT DATA,"
@@ -215,7 +228,8 @@ public class DatabaseManager {
                         + "dest_code INT,"
                         + "licensee_code CHAR(2) FOR BIT DATA,"
                         + "head_chksm CHAR(2) FOR BIT DATA,"
-                        + "global_chksm CHAR(2) FOR BIT DATA"
+                        + "global_chksm CHAR(2) FOR BIT DATA,"
+                        + "PRIMARY KEY (title, rom_rev, global_chksm)"
                         + ")");
                 conn.commit();
             }
