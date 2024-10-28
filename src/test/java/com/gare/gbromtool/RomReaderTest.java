@@ -12,7 +12,7 @@ import java.nio.file.Files;
 public class RomReaderTest {
 
     private File testRomFile;
-    private RomReader reader;
+    private RomReader romReader;
 
     @Before
     public void setUp() throws IOException {
@@ -44,27 +44,27 @@ public class RomReaderTest {
             fos.write(new byte[]{0x03});
         }
 
-        reader = new RomReader(testRomFile);
+        romReader = new RomReader(testRomFile);
     }
 
     @Test
     public void testGetTitle() {
-        assertEquals("TESTTITLE", reader.getTitle().trim());
+        assertEquals("TESTTITLE", romReader.getTitle().trim());
     }
 
     @Test
     public void testGetSGBFlag() {
-        assertTrue(reader.getSGBFlag());
+        assertTrue(romReader.getSGBFlag());
     }
 
     @Test
     public void testGetROMSize() {
-        assertEquals(2, reader.getROMSize());
+        assertEquals(2, romReader.getROMSize());
     }
 
     @Test
     public void testGetRAMSize() {
-        assertEquals(3, reader.getRAMSize());
+        assertEquals(3, romReader.getRAMSize());
     }
 
     @Test(expected = IOException.class)
@@ -72,29 +72,33 @@ public class RomReaderTest {
         // Create a file that's too small to be a valid ROM
         File invalidFile = File.createTempFile("invalid", ".gb");
         invalidFile.deleteOnExit();
-        try (FileOutputStream fos = new FileOutputStream(invalidFile)) {
-            fos.write(new byte[0x100]);  // Too small for valid header
-        }
+        Files.write(invalidFile.toPath(), new byte[0x100]);  // Too small for valid header
         new RomReader(invalidFile);  // Should throw IOException
     }
 
     @Test
     public void testTitleParsing() throws IOException {
-        byte[] cgbRomData = new byte[0x150];
-        cgbRomData[0x143] = (byte) 0x80;  // Set CGB flag
-        byte[] titleBytes = "POKEMON    ".getBytes(StandardCharsets.US_ASCII);
-        System.arraycopy(titleBytes, 0, cgbRomData, 0x134, titleBytes.length);
+        byte[] testRomData = new byte[0x150];
+        testRomData[0x143] = (byte) 0x80;  // Set CGB flag
+        byte[] titleBytes = "TESTGAME    ".getBytes(StandardCharsets.US_ASCII);
+        System.arraycopy(titleBytes, 0, testRomData, 0x134, titleBytes.length);
 
-        RomReader reader = new RomReader(createTestRom(cgbRomData));
-        RomTitle title = reader.parseTitle();
-        assertEquals("POKEMON", title.getTitle().trim());
+        romReader = new RomReader(createTestRom(testRomData));
+        RomTitle title = romReader.parseTitle();
+        assertEquals("TESTGAME", title.getTitle().trim());
         assertEquals("", title.getManufacturerCode());
     }
 
     private File createTestRom(byte[] data) throws IOException {
         File tempFile = File.createTempFile("test", ".gb");
         tempFile.deleteOnExit();
-        Files.write(tempFile.toPath(), data);
+
+        // Write full ROM data including Logo
+        byte[] fullData = new byte[0x150];
+        System.arraycopy(data, 0, fullData, 0, data.length);
+        System.arraycopy(RomSpec.BOOT_LOGO, 0, fullData, 0x104, RomSpec.BOOT_LOGO.length);
+
+        Files.write(tempFile.toPath(), fullData);
         return tempFile;
     }
 }
