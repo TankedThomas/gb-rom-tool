@@ -11,11 +11,9 @@ import java.util.HexFormat;
  */
 public class DatabaseQuery {
 
-    private final DatabaseManager dbManager;
     private final Connection conn;
 
     public DatabaseQuery(DatabaseManager dbManager) throws SQLException {
-        this.dbManager = dbManager;
         this.conn = dbManager.getConnection();
     }
 
@@ -150,6 +148,7 @@ public class DatabaseQuery {
     /**
      * Saves ROM information to Collection table.
      *
+     * @param rom the ROM file to save
      * @return true if save was successful, false otherwise
      * @throws SQLException if database operation fails
      */
@@ -182,8 +181,7 @@ public class DatabaseQuery {
     }
 
     /**
-     * Checks if a ROM already exists in Collection based on title,
-     * revision,
+     * Checks if a ROM already exists in Collection based on title, revision,
      * and checksum.
      *
      * @param title The ROM title
@@ -213,6 +211,7 @@ public class DatabaseQuery {
     /**
      * Updates an existing ROM entry in the Collection table.
      *
+     * @param rom the ROM file to update
      * @throws java.sql.SQLException
      * @return true if save was successful, false otherwise
      */
