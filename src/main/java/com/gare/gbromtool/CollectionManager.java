@@ -99,11 +99,6 @@ public class CollectionManager {
         }
     }
 
-    private boolean saveRomData(RomReader reader, String name, RomTitle titleInfo) throws SQLException {
-        Collection rom = Collection.fromRomReader(reader, name);
-        return dbQuery.saveRomToCollection(rom);
-    }
-
     private boolean confirmOverwrite() {
         if (testMode) {
             return testConfirmationResult;
