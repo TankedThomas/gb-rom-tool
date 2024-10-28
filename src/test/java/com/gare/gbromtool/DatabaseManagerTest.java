@@ -50,21 +50,21 @@ public class DatabaseManagerTest {
     @Test
     public void testTableExists() throws SQLException {
         Connection conn = dbManager.getConnection();
-        Statement stmt = conn.createStatement();
-
         // Test all required tables exist
-        String[] tables = {
-            "CartridgeType", "ROMSize", "RAMSize",
-            "NewLicenseeCode", "OldLicenseeCode", "Collection"
-        };
+        try (Statement stmt = conn.createStatement()) {
+            // Test all required tables exist
+            String[] tables = {
+                "CartridgeType", "ROMSize", "RAMSize",
+                "NewLicenseeCode", "OldLicenseeCode", "Collection"
+            };
 
-        for (String table : tables) {
-            ResultSet rs = conn.getMetaData().getTables(null, null,
-                    table.toUpperCase(), new String[]{"TABLE"});
-            assertTrue("Table " + table + " should exist", rs.next());
-            rs.close();
+            for (String table : tables) {
+                try (ResultSet rs = conn.getMetaData().getTables(null, null,
+                        table.toUpperCase(), new String[]{"TABLE"})) {
+                    assertTrue("Table " + table + " should exist", rs.next());
+                }
+            }
         }
-        stmt.close();
     }
 
     @Test
@@ -88,45 +88,45 @@ public class DatabaseManagerTest {
     @Test
     public void testROMSizeQuery() throws SQLException {
         Connection conn = dbManager.getConnection();
-        Statement stmt = conn.createStatement();
-
         // Test specific ROM sizes
-        ResultSet rs = stmt.executeQuery(
-                "SELECT size_kib, num_banks FROM ROMSize WHERE size_code = 0");
-        assertTrue(rs.next());
-        assertEquals(32, rs.getInt("size_kib"));
-        assertEquals(2, rs.getInt("num_banks"));
+        try (Statement stmt = conn.createStatement()) {
+            // Test specific ROM sizes
+            ResultSet rs = stmt.executeQuery(
+                    "SELECT size_kib, num_banks FROM ROMSize WHERE size_code = 0");
+            assertTrue(rs.next());
+            assertEquals(32, rs.getInt("size_kib"));
+            assertEquals(2, rs.getInt("num_banks"));
 
-        rs = stmt.executeQuery(
-                "SELECT size_kib, num_banks FROM ROMSize WHERE size_code = 5");
-        assertTrue(rs.next());
-        assertEquals(1024, rs.getInt("size_kib")); // 1 MiB
-        assertEquals(64, rs.getInt("num_banks"));
+            rs = stmt.executeQuery(
+                    "SELECT size_kib, num_banks FROM ROMSize WHERE size_code = 5");
+            assertTrue(rs.next());
+            assertEquals(1024, rs.getInt("size_kib")); // 1 MiB
+            assertEquals(64, rs.getInt("num_banks"));
 
-        rs.close();
-        stmt.close();
+            rs.close();
+        }
     }
 
     @Test
     public void testRAMSizeQuery() throws SQLException {
         Connection conn = dbManager.getConnection();
-        Statement stmt = conn.createStatement();
-
         // Test specific RAM sizes
-        ResultSet rs = stmt.executeQuery(
-                "SELECT size_kib, num_banks FROM RAMSize WHERE size_code = 0");
-        assertTrue(rs.next());
-        assertEquals(0, rs.getInt("size_kib"));
-        assertEquals(0, rs.getInt("num_banks"));
+        try (Statement stmt = conn.createStatement()) {
+            // Test specific RAM sizes
+            ResultSet rs = stmt.executeQuery(
+                    "SELECT size_kib, num_banks FROM RAMSize WHERE size_code = 0");
+            assertTrue(rs.next());
+            assertEquals(0, rs.getInt("size_kib"));
+            assertEquals(0, rs.getInt("num_banks"));
 
-        rs = stmt.executeQuery(
-                "SELECT size_kib, num_banks FROM RAMSize WHERE size_code = 3");
-        assertTrue(rs.next());
-        assertEquals(32, rs.getInt("size_kib"));
-        assertEquals(4, rs.getInt("num_banks"));
+            rs = stmt.executeQuery(
+                    "SELECT size_kib, num_banks FROM RAMSize WHERE size_code = 3");
+            assertTrue(rs.next());
+            assertEquals(32, rs.getInt("size_kib"));
+            assertEquals(4, rs.getInt("num_banks"));
 
-        rs.close();
-        stmt.close();
+            rs.close();
+        }
     }
 
     @Test
@@ -167,12 +167,11 @@ public class DatabaseManagerTest {
     @Test
     public void testCollectionTableStructure() throws SQLException {
         Connection conn = dbManager.getConnection();
-        ResultSet columns = conn.getMetaData().getColumns(
-                null, null, "COLLECTION", null);
+        ResultSet columns = conn.getMetaData().getColumns(null, null, "COLLECTION", null);
 
         // Verify all required columns exist
         String[] expectedColumns = {
-            "TITLE", "TYPE_CODE", "ROM_REV", "ROM_SIZE_CODE",
+            "TITLE", "NAME", "TYPE_CODE", "ROM_REV", "ROM_SIZE_CODE",
             "RAM_SIZE_CODE", "SGB_FLAG", "CGB_FLAG", "DEST_CODE",
             "LICENSEE_CODE", "HEAD_CHKSM", "GLOBAL_CHKSM"
         };
