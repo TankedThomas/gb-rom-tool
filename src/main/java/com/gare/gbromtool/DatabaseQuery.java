@@ -150,35 +150,10 @@ public class DatabaseQuery {
     /**
      * Saves ROM information to Collection table.
      *
-     * @param name User-provided name for the ROM
-     * @param title ROM title from header
-     * @param typeCode Cartridge type code
-     * @param romRev ROM revision number
-     * @param romSizeCode ROM size code
-     * @param ramSizeCode RAM size code
-     * @param sgbFlag Super Game Boy flag
-     * @param cgbFlag Game Boy Color flag
-     * @param destCode Destination code
-     * @param licenseeCode Licensee code
-     * @param headerChecksum Header checksum
-     * @param globalChecksum Global checksum
      * @return true if save was successful, false otherwise
      * @throws SQLException if database operation fails
      */
-    public boolean saveRomToCollection(
-            String name,
-            String title,
-            byte[] typeCode,
-            byte[] romRev,
-            int romSizeCode,
-            int ramSizeCode,
-            boolean sgbFlag,
-            byte[] cgbFlag,
-            int destCode,
-            byte[] licenseeCode,
-            byte[] headerChecksum,
-            byte[] globalChecksum) throws SQLException {
-
+    public boolean saveRomToCollection(Collection rom) throws SQLException {
         String sql = """
                     INSERT INTO Collection (
                         title, name, type_code, rom_rev, rom_size_code,
@@ -188,18 +163,18 @@ public class DatabaseQuery {
                     """;
 
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setString(1, title);
-            stmt.setString(2, name);
-            stmt.setBytes(3, typeCode);
-            stmt.setBytes(4, romRev);
-            stmt.setInt(5, romSizeCode);
-            stmt.setInt(6, ramSizeCode);
-            stmt.setBoolean(7, sgbFlag);
-            stmt.setBytes(8, cgbFlag);
-            stmt.setInt(9, destCode);
-            stmt.setBytes(10, licenseeCode);
-            stmt.setBytes(11, headerChecksum);
-            stmt.setBytes(12, globalChecksum);
+            stmt.setString(1, rom.getTitle());
+            stmt.setString(2, rom.getName());
+            stmt.setBytes(3, rom.getTypeCode());
+            stmt.setBytes(4, rom.getRomRev());
+            stmt.setInt(5, rom.getRomSizeCode());
+            stmt.setInt(6, rom.getRamSizeCode());
+            stmt.setBoolean(7, rom.getSgbFlag());
+            stmt.setBytes(8, rom.getCgbFlag());
+            stmt.setInt(9, rom.getDestCode());
+            stmt.setBytes(10, rom.getLicenseeCode());
+            stmt.setBytes(11, rom.getHeaderChecksum());
+            stmt.setBytes(12, rom.getGlobalChecksum());
 
             int rowsAffected = stmt.executeUpdate();
             return rowsAffected > 0;
@@ -207,23 +182,97 @@ public class DatabaseQuery {
     }
 
     /**
-     * Checks if a ROM with the given title already exists in Collection.
+     * Checks if a ROM already exists in Collection based on title,
+     * revision,
+     * and checksum.
      *
-     * @param title The ROM title to check
-     * @return true if the ROM exists, false otherwise
+     * @param title The ROM title
+     * @param romRev The ROM revision code
+     * @param globalChecksum The global checksum
+     * @return true if an identical ROM exists, false otherwise
      * @throws SQLException if database operation fails
      */
-    public boolean romExistsInCollection(String title) throws SQLException {
-        String sql = "SELECT COUNT(*) FROM Collection WHERE title = ?";
+    public boolean romExistsInCollection(String title, byte[] romRev, byte[] globalChecksum)
+            throws SQLException {
+        String sql = "SELECT COUNT(*) FROM Collection "
+                + "WHERE title = ? AND rom_rev = ? AND global_chksm = ?";
 
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, title);
+            stmt.setBytes(2, romRev);
+            stmt.setBytes(3, globalChecksum);
+
             ResultSet rs = stmt.executeQuery();
             if (rs.next()) {
                 return rs.getInt(1) > 0;
             }
         }
         return false;
+    }
+
+    /**
+     * Updates an existing ROM entry in the Collection table.
+     *
+     * @throws java.sql.SQLException
+     * @return true if save was successful, false otherwise
+     */
+    public boolean updateRomInCollection(Collection rom) throws SQLException {
+        String sql = """
+                    UPDATE Collection 
+                    SET name = ?, type_code = ?, rom_size_code = ?, 
+                        ram_size_code = ?, sgb_flag = ?, cgb_flag = ?, 
+                        dest_code = ?, licensee_code = ?, head_chksm = ?
+                    WHERE title = ? AND rom_rev = ? AND global_chksm = ?
+                    """;
+
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setString(1, rom.getName());
+            stmt.setBytes(2, rom.getTypeCode());
+            stmt.setInt(3, rom.getRomSizeCode());
+            stmt.setInt(4, rom.getRamSizeCode());
+            stmt.setBoolean(5, rom.getSgbFlag());
+            stmt.setBytes(6, rom.getCgbFlag());
+            stmt.setInt(7, rom.getDestCode());
+            stmt.setBytes(8, rom.getLicenseeCode());
+            stmt.setBytes(9, rom.getHeaderChecksum());
+            stmt.setString(10, rom.getTitle());
+            stmt.setBytes(11, rom.getRomRev());
+            stmt.setBytes(12, rom.getGlobalChecksum());
+
+            int rowsAffected = stmt.executeUpdate();
+            return rowsAffected > 0;
+        }
+    }
+
+    /**
+     * Debug method to print all ROMs in the Collection table with more details.
+     *
+     * @throws java.sql.SQLException
+     */
+    public void printAllRoms() throws SQLException {
+        String sql = """
+                    SELECT name, title, rom_rev, global_chksm 
+                    FROM Collection 
+                    ORDER BY title, rom_rev, global_chksm
+                    """;
+
+        try (Statement stmt = conn.createStatement(); ResultSet rs = stmt.executeQuery(sql)) {
+
+            System.out.println("\nROMs in Collection:");
+            System.out.println("------------------");
+            while (rs.next()) {
+                System.out.printf("Name: %-30s Title: %-20s Rev: %02X Global Checksum: %s%n",
+                        rs.getString("name"),
+                        rs.getString("title"),
+                        rs.getBytes("rom_rev")[0],
+                        bytesToHex(rs.getBytes("global_chksm")));
+            }
+            System.out.println("------------------\n");
+        }
+    }
+
+    private String bytesToHex(byte[] bytes) {
+        return bytes != null ? HexFormat.of().formatHex(bytes) : "null";
     }
 
 }
