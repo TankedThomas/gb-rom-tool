@@ -93,7 +93,7 @@ public class RomReaderTest {
     public void testTitleParsing() throws IOException {
         // Create complete test ROM data
         byte[] testRomData = new byte[0x150];  // Minimum size for header
-        testRomData[0x143] = (byte) 0x80;      // Set CGB flag
+        testRomData[0x143] = (byte) 0x80;  // Set CGB flag
 
         // Copy header data
         System.arraycopy(RomSpecification.BOOT_LOGO, 0, testRomData, 0x104, RomSpecification.BOOT_LOGO.length);
@@ -105,26 +105,5 @@ public class RomReaderTest {
         RomTitle title = reader.parseTitle();
 
         assertEquals("TESTGAME", title.getTitle().trim());
-    }
-
-    /**
-     * Creates a test ROM file with specified data.
-     * Writes ROM data and adds Logo at the correct offset.
-     *
-     * @param data Initial ROM data to write
-     * @return A temporary file containing the test ROM
-     * @throws IOException if file creation or writing fails
-     */
-    private File createTestRom(byte[] data) throws IOException {
-        File tempFile = File.createTempFile("test", ".gb");
-        tempFile.deleteOnExit();
-
-        // Write full ROM data including Logo
-        byte[] fullData = new byte[0x150];
-        System.arraycopy(data, 0, fullData, 0, data.length);
-        System.arraycopy(RomSpecification.BOOT_LOGO, 0, fullData, 0x104, RomSpecification.BOOT_LOGO.length);
-
-        Files.write(tempFile.toPath(), fullData);
-        return tempFile;
     }
 }
