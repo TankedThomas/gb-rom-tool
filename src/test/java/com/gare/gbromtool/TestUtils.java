@@ -46,10 +46,10 @@ public final class TestUtils {
             fos.write(new byte[]{0x00});     // ROM ONLY
 
             fos.getChannel().position(0x148); // ROM size
-            fos.write(new byte[]{0x00});     // 32KB
+            fos.write(new byte[]{0x02});     // 128KiB
 
             fos.getChannel().position(0x149); // RAM size
-            fos.write(new byte[]{0x00});     // No RAM
+            fos.write(new byte[]{0x03});     // 32KiB
         }
 
         return new RomReader(testFile);
