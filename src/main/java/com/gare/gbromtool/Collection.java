@@ -3,8 +3,8 @@ package com.gare.gbromtool;
 /**
  * Entity class representing a row in the Collection table of the database.
  * This class provides an object-oriented representation of ROM data that maps
- * directly to database columns. All fields are immutable to ensure data
- * integrity.
+ * directly to database columns.
+ * All fields are immutable to ensure data integrity.
  *
  * @author Thomas Robinson 23191795
  */
