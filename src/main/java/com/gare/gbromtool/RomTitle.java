@@ -53,26 +53,27 @@ public class RomTitle {
 
         if (isCGB) {
             // Get last 4 bytes as potential manufacturer code
-            byte[] codeBytes = new byte[4];
-            System.arraycopy(titleBytes, 11, codeBytes, 0, 4);
-            String potentialCode = new String(codeBytes, StandardCharsets.US_ASCII).trim();
-            System.out.println("Checking Manufacturer Code: " + potentialCode); // Debug
+            String fullTitle = new String(titleBytes, StandardCharsets.US_ASCII).trim();
 
-            if (isValidManufacturerCode(potentialCode)) {
-                // Get title bytes (first 11 bytes)
-                byte[] actualTitleBytes = new byte[11];
-                System.arraycopy(titleBytes, 0, actualTitleBytes, 0, 11);
-                String title = new String(actualTitleBytes, StandardCharsets.US_ASCII).trim();
+            // Check if the last 4 characters could be a manufacturer code
+            if (fullTitle.length() >= 4) {
+                String potentialCode = fullTitle.substring(fullTitle.length() - 4);
+                System.out.println("Checking Manufacturer Code: " + potentialCode); // Debug
 
-                System.out.println("Valid Manufacturer Code found"); // Debug
-                System.out.println("Title: " + title); // Debug
-                System.out.println("Manufacturer Code: " + potentialCode); // Debug
-                return new RomTitle(title, potentialCode);
-            } else {
-                System.out.println("Invalid Manufacturer Code"); // Debug
+                if (isValidManufacturerCode(potentialCode)) {
+                    // Get actual title (everything before manufacturer code)
+                    String actualTitle = fullTitle.substring(0, fullTitle.length() - 4).trim();
+
+                    System.out.println("Valid Manufacturer Code found"); // Debug
+                    System.out.println("Title: " + actualTitle); // Debug
+                    System.out.println("Manufacturer Code: " + potentialCode); // Debug
+
+                    return new RomTitle(actualTitle, potentialCode);
+                }
             }
-        }
 
+            System.out.println("Invalid Manufacturer Code"); // Debug
+        }
         // If not CGB or no valid manufacturer code, return full title
         return new RomTitle(new String(titleBytes, StandardCharsets.US_ASCII).trim(), "");
     }
@@ -92,6 +93,8 @@ public class RomTitle {
             }
         }
 
+        // First character must be one of: A, B, H, K, V
+        // Last character must be one of: A, B, D, E, F, I, J, K, P, S, U, X, Y
         char first = code.charAt(0);
         char last = code.charAt(3);
 
