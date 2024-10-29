@@ -46,7 +46,7 @@ public class CollectionManagerTest {
         byte[] romData = new byte[0x150];
 
         // Logo data (required for validation)
-        byte[] logoData = RomSpec.BOOT_LOGO;
+        byte[] logoData = RomSpecification.BOOT_LOGO;
 
         try (FileOutputStream fos = new FileOutputStream(testRomFile)) {
             // Write base ROM data
@@ -150,7 +150,7 @@ public class CollectionManagerTest {
 
             // Set essential data
             fos.getChannel().position(0x104);
-            fos.write(RomSpec.BOOT_LOGO);
+            fos.write(RomSpecification.BOOT_LOGO);
 
             fos.getChannel().position(0x134);
             fos.write("TESTTITLE".getBytes());
