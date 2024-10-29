@@ -46,7 +46,7 @@ public class DatabaseIntegrationTest {
      * Verifies that a ROM can be saved to the database and confirm its
      * existence.
      *
-     * @throws java.sql.SQLException
+     * @throws SQLException if database operations fail
      */
     @Test
     public void testSaveAndRetrieve() throws SQLException {
@@ -63,7 +63,7 @@ public class DatabaseIntegrationTest {
      * Verifies that ROM data can be saved and then updated with new
      * information.
      *
-     * @throws java.sql.SQLException
+     * @throws SQLException if database operations fail
      */
     @Test
     public void testUpdate() throws SQLException {
