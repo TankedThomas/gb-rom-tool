@@ -37,7 +37,7 @@ public class RomReader {
         byte[] logo = Arrays.copyOfRange(romData, 0x104, 0x134);
 
         // The Logo expected in the ROM header to check against
-        byte[] checkLogo = RomSpec.BOOT_LOGO;
+        byte[] checkLogo = RomSpecification.BOOT_LOGO;
 
         System.out.println("Extracted logo bytes: " + HexFormat.of().formatHex(logo));
         System.out.println("Expected logo bytes: " + HexFormat.of().formatHex(checkLogo));
