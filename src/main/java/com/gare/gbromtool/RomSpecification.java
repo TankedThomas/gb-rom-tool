@@ -5,7 +5,7 @@ package com.gare.gbromtool;
  *
  * @author Thomas Robinson 23191795
  */
-public class RomSpec {
+public class RomSpecification {
 
     // BOOT_LOGO is shared and immutable
     public static final byte[] BOOT_LOGO = {
