@@ -33,7 +33,7 @@ public final class TestUtils {
             // Write base ROM data
             fos.write(romData);
 
-            // Write Nintendo Logo
+            // Write Logo
             fos.getChannel().position(0x104);
             fos.write(RomSpecification.BOOT_LOGO);
 
