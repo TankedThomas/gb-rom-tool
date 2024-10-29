@@ -28,6 +28,16 @@ public class RomReader {
     }
 
     /**
+     * Gets a copy of the ROM data.
+     * This method is primarily used for testing purposes.
+     *
+     * @return a defensive copy of the ROM data
+     */
+    protected byte[] getRomData() {
+        return romData.clone();
+    }
+
+    /**
      * This method extracts the Logo from the ROM header.
      *
      * @return true if the logo matches, false otherwise
