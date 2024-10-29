@@ -66,6 +66,7 @@ public class CollectionManager {
                 boolean success = dbQuery.updateRomInCollection(rom);
                 if (success) {
                     showSuccess("ROM information updated successfully.");
+                    dbQuery.printAllRoms(); // For debugging
                     return true;
                 } else {
                     showError("Failed to update ROM information.",
