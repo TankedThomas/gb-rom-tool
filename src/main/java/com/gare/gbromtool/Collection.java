@@ -45,6 +45,7 @@ public class Collection {
      * @param licenseeCode Licensee code
      * @param headerChecksum Header checksum
      * @param globalChecksum Global checksum
+     * @throws IllegalArgumentException if name or title exceed maximum length
      */
     public Collection(
             String name,
@@ -59,18 +60,31 @@ public class Collection {
             byte[] licenseeCode,
             byte[] headerChecksum,
             byte[] globalChecksum) {
+
+        if (name == null || title == null) {
+            throw new IllegalArgumentException("Name and title cannot be null");
+        }
+        if (name.length() > MAX_NAME_LENGTH) {
+            throw new IllegalArgumentException(
+                    "Name exceeds maximum length of " + MAX_NAME_LENGTH);
+        }
+        if (title.length() > MAX_TITLE_LENGTH) {
+            throw new IllegalArgumentException(
+                    "Title exceeds maximum length of " + MAX_TITLE_LENGTH);
+        }
+
         this.name = name;
         this.title = title;
-        this.typeCode = typeCode;
-        this.romRev = romRev;
+        this.typeCode = typeCode.clone();
+        this.romRev = romRev.clone();
         this.romSizeCode = romSizeCode;
         this.ramSizeCode = ramSizeCode;
         this.sgbFlag = sgbFlag;
-        this.cgbFlag = cgbFlag;
+        this.cgbFlag = cgbFlag.clone();
         this.destCode = destCode;
-        this.licenseeCode = licenseeCode;
-        this.headerChecksum = headerChecksum;
-        this.globalChecksum = globalChecksum;
+        this.licenseeCode = licenseeCode.clone();
+        this.headerChecksum = headerChecksum.clone();
+        this.globalChecksum = globalChecksum.clone();
     }
 
     // Getters
