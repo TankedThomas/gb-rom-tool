@@ -69,9 +69,7 @@ public class CollectionManager {
                     dbQuery.printAllRoms(); // For debugging
                     return true;
                 } else {
-                    showError("Failed to update ROM information.",
-                            "Update Failed",
-                            JOptionPane.ERROR_MESSAGE);
+                    showError("Failed to update ROM information.", "Update Failed", JOptionPane.ERROR_MESSAGE);
                     return false;
                 }
             }
@@ -83,16 +81,12 @@ public class CollectionManager {
                 dbQuery.printAllRoms(); // For debugging
                 return true;
             } else {
-                showError("Failed to save ROM information.",
-                        "Save Failed",
-                        JOptionPane.ERROR_MESSAGE);
+                showError("Failed to save ROM information.", "Save Failed", JOptionPane.ERROR_MESSAGE);
                 return false;
             }
 
         } catch (IllegalArgumentException e) {
-            showError(e.getMessage(),
-                    "Invalid Input",
-                    JOptionPane.ERROR_MESSAGE);
+            showError(e.getMessage(), "Invalid Input", JOptionPane.ERROR_MESSAGE);
             return false;
         } catch (SQLException ex) {
             handleDatabaseError("Database error during save: ", ex);
@@ -107,8 +101,7 @@ public class CollectionManager {
 
         int choice = JOptionPane.showConfirmDialog(parentFrame,
                 "This ROM version already exists in the database. Do you want to update it?",
-                "ROM Version Already Exists",
-                JOptionPane.YES_NO_OPTION);
+                "ROM Version Already Exists", JOptionPane.YES_NO_OPTION);
 
         return choice == JOptionPane.YES_OPTION;
     }
@@ -118,15 +111,12 @@ public class CollectionManager {
             return defaultName;  // In test mode, just return the default name
         }
 
-        String name = JOptionPane.showInputDialog(parentFrame,
-                "Enter a name for this ROM:",
-                defaultName);
+        String name = JOptionPane.showInputDialog(parentFrame, "Enter a name for this ROM:", defaultName);
 
         // Check length here before creating Collection object
         if (name != null && name.length() > Collection.MAX_NAME_LENGTH) {
-            showError("Name is too long. Maximum length is " + Collection.MAX_NAME_LENGTH + " characters.",
-                    "Invalid Name",
-                    JOptionPane.ERROR_MESSAGE);
+            showError("Name is too long. Maximum length is " + Collection.MAX_NAME_LENGTH
+                    + " characters.", "Invalid Name", JOptionPane.ERROR_MESSAGE);
             return null;
         }
 
@@ -134,23 +124,15 @@ public class CollectionManager {
     }
 
     private void showError(String message, String title, int messageType) {
-        JOptionPane.showMessageDialog(parentFrame,
-                message,
-                title,
-                messageType);
+        JOptionPane.showMessageDialog(parentFrame, message, title, messageType);
     }
 
     private void showSuccess(String message) {
-        JOptionPane.showMessageDialog(parentFrame,
-                message,
-                "Save Successful",
-                JOptionPane.INFORMATION_MESSAGE);
+        JOptionPane.showMessageDialog(parentFrame, message, "Save Successful", JOptionPane.INFORMATION_MESSAGE);
     }
 
     private void handleDatabaseError(String message, SQLException ex) {
         System.err.println(message + ex.getMessage());
-        showError("Error saving to database: " + ex.getMessage(),
-                "Database Error",
-                JOptionPane.ERROR_MESSAGE);
+        showError("Error saving to database: " + ex.getMessage(), "Database Error", JOptionPane.ERROR_MESSAGE);
     }
 }
