@@ -16,17 +16,19 @@ public class DatabaseIntegrationTest {
 
     @BeforeClass
     public static void setUpClass() throws SQLException {
+        // Start with clean database
         DatabaseManager.dropDatabase();
         dbManager = DatabaseManager.getInstance();
     }
 
     @Before
     public void setUp() throws Exception {
+        // Clean database between tests
         dbManager.cleanDatabase();
         dbQuery = new DatabaseQuery(dbManager);
 
-        // Create test ROM data
-        RomReader reader = TestUtils.createTestRomReader("TESTTITLE");
+        // Create test ROM data for each test
+        RomReader reader = TestUtils.createTestRomReader("TESTGAME");
         testRom = Collection.fromRomReader(reader, "Test ROM");
     }
 
@@ -39,6 +41,13 @@ public class DatabaseIntegrationTest {
         }
     }
 
+    /**
+     * Tests basic save and retrieve operations.
+     * Verifies that a ROM can be saved to the database and confirm its
+     * existence.
+     *
+     * @throws java.sql.SQLException
+     */
     @Test
     public void testSaveAndRetrieve() throws SQLException {
         assertTrue(dbQuery.saveRomToCollection(testRom));
@@ -49,6 +58,13 @@ public class DatabaseIntegrationTest {
         ));
     }
 
+    /**
+     * Tests updating existing ROM entries.
+     * Verifies that ROM data can be saved and then updated with new
+     * information.
+     *
+     * @throws java.sql.SQLException
+     */
     @Test
     public void testUpdate() throws SQLException {
         // Save initial version
@@ -70,6 +86,6 @@ public class DatabaseIntegrationTest {
                 testRom.getGlobalChecksum()
         );
 
-        assertTrue(dbQuery.updateRomInCollection(updatedRom));
+        assertTrue("Failed to update ROM", dbQuery.updateRomInCollection(updatedRom));
     }
 }
