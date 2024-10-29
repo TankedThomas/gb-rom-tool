@@ -96,7 +96,7 @@ public class RomReaderTest {
         // Write full ROM data including Logo
         byte[] fullData = new byte[0x150];
         System.arraycopy(data, 0, fullData, 0, data.length);
-        System.arraycopy(RomSpec.BOOT_LOGO, 0, fullData, 0x104, RomSpec.BOOT_LOGO.length);
+        System.arraycopy(RomSpecification.BOOT_LOGO, 0, fullData, 0x104, RomSpecification.BOOT_LOGO.length);
 
         Files.write(tempFile.toPath(), fullData);
         return tempFile;
