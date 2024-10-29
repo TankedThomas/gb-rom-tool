@@ -10,6 +10,12 @@ import java.io.IOException;
 import java.sql.SQLException;
 import javax.swing.JFrame;
 
+/**
+ * Test class for CollectionManager functionality.
+ * Tests insertion, update and validation of data in the Collection table.
+ *
+ * @author Thomas Robinson 23191795
+ */
 public class CollectionManagerTest {
 
     private static DatabaseManager dbManager;
@@ -58,7 +64,7 @@ public class CollectionManagerTest {
 
             // Write title "TESTTITLE" at 0x134
             fos.getChannel().position(0x134);
-            fos.write("TESTTITLE".getBytes());
+            fos.write("TESTGAME".getBytes());
 
             // Write various header fields
             fos.getChannel().position(0x143); // CGB flag
