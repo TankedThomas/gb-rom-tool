@@ -8,7 +8,8 @@ import java.util.Arrays;
 import java.util.HexFormat;
 
 /**
- * This class contains methods for reading ROM data.
+ * Contains methods for reading ROM data.
+ * Extracts and validates header information according to ROM specifications.
  *
  * @author Thomas Robinson 23191795
  */
@@ -54,7 +55,7 @@ public class RomReader {
 
     /**
      * Constructs a RomReader from a Collection object.
-     * Creates a minimal valid ROM data structure from the database information
+     * Creates a minimal valid ROM data structure from the database information.
      *
      * @param rom the Collection object containing ROM data
      */
@@ -90,7 +91,7 @@ public class RomReader {
         // Handle licensee code directly from database
         byte[] licenseeCode = rom.getLicenseeCode();
         if (licenseeCode.length == 2) {
-            // New format - set old licensee code to 0x33 and copy new code to correct position
+            // New format - set Old Licensee Code to 0x33 and copy new code to correct position
             minData[0x14B] = 0x33;
             System.arraycopy(licenseeCode, 0, minData, 0x144, 2);
         } else {
@@ -106,17 +107,23 @@ public class RomReader {
         this.checksum = new RomChecksum(this.romData, this);
     }
 
+    /**
+     * @return true if data was loaded from database
+     */
     public boolean getLoadFromDatabase() {
         return loadFromDatabase;
     }
 
+    /**
+     * @return name stored in database, or null if not from database
+     */
     public String getDatabaseName() {
         return databaseName;
     }
 
     /**
      * Gets a copy of the ROM data.
-     * This method is primarily used for testing purposes
+     * This method is primarily used for testing purposes.
      *
      * @return a defensive copy of the ROM data
      */
@@ -125,9 +132,9 @@ public class RomReader {
     }
 
     /**
-     * This method extracts the Logo from the ROM header.
+     * Extracts and validates the Logo from the ROM header.
      *
-     * @return true if the logo matches, false otherwise
+     * @return true if the Logo matches specification, false otherwise
      */
     public boolean getLogo() {
         // The Logo is stored at offset 0x104 - 0x133 (48 bytes)
@@ -143,7 +150,7 @@ public class RomReader {
     }
 
     /**
-     * This method extracts the Title from the ROM header.
+     * Extracts the Title from the ROM header.
      *
      * @return the Title as a string
      */
@@ -159,12 +166,17 @@ public class RomReader {
         return new String(titleBytes, StandardCharsets.US_ASCII);
     }
 
+    /**
+     * Parses the ROM Title, separating Manufacturer Code if present.
+     *
+     * @return RomTitle object containing parsed data
+     */
     public RomTitle parseTitle() {
         return RomTitle.parseTitle(romData);
     }
 
     /**
-     * This method extracts the CGB Flag from the ROM header.
+     * Extracts the CGB Flag from the ROM header.
      *
      * @return the CGB Flag as a byte
      */
@@ -178,7 +190,7 @@ public class RomReader {
     }
 
     /**
-     * This method extracts the SGB flag from the ROM header.
+     * Extracts the SGB flag from the ROM header.
      *
      * @return true if the flag is present, false otherwise
      */
@@ -189,7 +201,7 @@ public class RomReader {
     }
 
     /**
-     * This method extracts the Cartridge Type from the ROM header.
+     * Extracts the Cartridge Type from the ROM header.
      *
      * @return the Cartridge Type as a string
      */
@@ -206,14 +218,13 @@ public class RomReader {
     }
 
     /**
-     * This method extracts the Licensee Code from the ROM header.
-     *
-     * If the Old Licensee Code is 0x33, the New Licensee Code is used instead
+     * Extracts the Licensee Code from the ROM header.
+     * If the Old Licensee Code is 0x33, the New Licensee Code is used instead.
      *
      * The Licensee Code is stored at either 0x14B (old code)
-     * or 0x144-0x145 (new code)
+     * or 0x144-0x145 (new code).
      *
-     * The New Licensee Code should be converted to ASCII when returned
+     * The New Licensee Code should be converted to ASCII when returned.
      *
      * @return the Licensee Code as 1-2 bytes, depending on type
      */
@@ -233,9 +244,9 @@ public class RomReader {
     }
 
     /**
-     * This method extracts the ROM size from the ROM header as an integer.
+     * Extracts the ROM size from the ROM header as an integer.
      * ROM size is stored as hexadecimal but only 00-08 are used,
-     * so using an integer simplifies this method
+     * so using an integer simplifies this method.
      *
      * @return the ROM size as an unsigned integer
      */
@@ -245,9 +256,9 @@ public class RomReader {
     }
 
     /**
-     * This method extracts the RAM size from the ROM header as an integer.
+     * Extracts the RAM size from the ROM header as an integer.
      * RAM size is stored as a hexadecimal but only 00-05 are used,
-     * so using an integer simplifies this method
+     * so using an integer simplifies this method.
      *
      * @return the ROM size as an unsigned integer
      */
@@ -257,10 +268,10 @@ public class RomReader {
     }
 
     /**
-     * This method extracts the Destination Code from the ROM header as an
+     * Extracts the Destination Code from the ROM header as an
      * integer.
-     * Destination Code is stored as hexadecimal but only 00-01 are used,
-     * so using an integer simplifies this method
+     * Destination Code is stored as hexadecimal but only 0x00-0x01 are used,
+     * so using an integer simplifies this method.
      *
      * @return the Destination Code as an unsigned integer
      */
@@ -270,12 +281,12 @@ public class RomReader {
     }
 
     /**
-     * This method extracts the Mask ROM version number from the ROM header.
+     * Extracts the Mask ROM version number from the ROM header.
+     * The Mask ROM version number is stored at offset 0x14C.
      *
      * @return the Mask ROM Version as a byte
      */
     public byte[] getMaskVersion() {
-        // The Mask ROM version number is stored at offset 0x14C
         byte maskVersion[] = new byte[1];
 
         System.arraycopy(romData, 0x14C, maskVersion, 0, 1);
@@ -284,10 +295,10 @@ public class RomReader {
     }
 
     /**
-     * This method extracts the Header Checksum from the ROM Header.
-     * The Header Checksum is stored at offset 0x14D
+     * Extracts the Header Checksum from the ROM Header.
+     * The Header Checksum is stored at offset 0x14D.
      * This byte contains an 8-bit checksum computed from the cartridge header
-     * bytes $0134–014C
+     * bytes $0134–014C.
      *
      * @return the Header Checksum as a byte
      */
@@ -300,25 +311,28 @@ public class RomReader {
     }
 
     /**
-     * Verifies the header checksum.
+     * Verifies the Header Checksum.
      * For both file and database entries, compares stored checksum against
      * calculated value.
      *
-     * @return true if checksum is valid, false otherwise
+     * @return true if Header Checksum is valid, false otherwise
      */
     public boolean verifyHeaderChecksum() {
         return checksum.verifyHeaderChecksum();
     }
 
+    /**
+     * @return the Header Checksum from the database
+     */
     public String getStoredHeaderChecksum() {
         return checksum.getStoredHeaderChecksum();
     }
 
     /**
-     * This method extracts the Global Checksum from the ROM Header.
-     * The Global Checksum is stored at offset 0x14E - 0x14F
+     * Extracts the Global Checksum from the ROM Header.
+     * The Global Checksum is stored at offset 0x14E - 0x14F.
      * These bytes contains a 16-bit checksum computed from all bytes in the ROM
-     * (except these checksum bytes)
+     * (except these checksum bytes).
      *
      * @return the Global Checksum as two bytes
      */
@@ -331,9 +345,9 @@ public class RomReader {
     }
 
     /**
-     * Verifies the global checksum.
+     * Verifies the Global Checksum.
      * For both file and database entries, compares stored checksum against
-     * calculated value
+     * calculated value.
      *
      * @return true if checksum is valid, false otherwise
      */
@@ -342,9 +356,7 @@ public class RomReader {
     }
 
     /**
-     * Retrieves the Global Checksum from the database.
-     *
-     * @return the Global Checksum
+     * @return the Global Checksum from the database
      */
     public String getStoredGlobalChecksum() {
         return checksum.getStoredGlobalChecksum();

@@ -34,19 +34,19 @@ public class Collection {
     /**
      * Creates a new Collection entity with the specified ROM data.
      *
-     * @param name User-provided name for the ROM
-     * @param title ROM title
-     * @param manufacturerCode ROM manufacturer code
+     * @param name user-provided name for the ROM
+     * @param title ROM Title
+     * @param manufacturerCode ROM Manufacturer Code
      * @param typeCode Cartridge type code
-     * @param romRev ROM revision number
-     * @param romSizeCode ROM size code
-     * @param ramSizeCode RAM size code
-     * @param sgbFlag Super Game Boy flag
-     * @param cgbFlag Game Boy Color flag
-     * @param destCode Destination code
-     * @param licenseeCode Licensee code
-     * @param headerChecksum Header checksum
-     * @param globalChecksum Global checksum
+     * @param romRev ROM Revision number
+     * @param romSizeCode ROM Size code
+     * @param ramSizeCode RAM Size code
+     * @param sgbFlag SGB flag
+     * @param cgbFlag CGB flag
+     * @param destCode Destination Code
+     * @param licenseeCode Licensee Code
+     * @param headerChecksum Header Checksum
+     * @param globalChecksum Global Checksum
      * @throws IllegalArgumentException if name or title exceed maximum length
      */
     public Collection(
@@ -93,91 +93,91 @@ public class Collection {
 
     // Getters
     /**
-     * @return The user-provided name for this ROM
+     * @return user-provided name for this ROM
      */
     public String getName() {
         return name;
     }
 
     /**
-     * @return The title extracted from the ROM header
+     * @return Title extracted from the ROM header
      */
     public String getTitle() {
         return title;
     }
 
     /**
-     * @return The manufacturer code extracted from the ROM header, if it exists
+     * @return Manufacturer Code extracted from the ROM header, if it exists
      */
     public String getManufacturerCode() {
         return manufacturerCode;
     }
 
     /**
-     * @return A copy of the cartridge type code
+     * @return a copy of the Cartridge Type code
      */
     public byte[] getTypeCode() {
         return typeCode.clone();
     }
 
     /**
-     * @return A copy of the ROM revision number
+     * @return a copy of the ROM Revision number
      */
     public byte[] getRomRev() {
         return romRev.clone();
     }
 
     /**
-     * @return The ROM size code
+     * @return ROM Size code
      */
     public int getRomSizeCode() {
         return romSizeCode;
     }
 
     /**
-     * @return The RAM size code
+     * @return RAM Size code
      */
     public int getRamSizeCode() {
         return ramSizeCode;
     }
 
     /**
-     * @return The Super Game Boy compatibility flag
+     * @return SGB Compatibility flag
      */
     public boolean getSgbFlag() {
         return sgbFlag;
     }
 
     /**
-     * @return A copy of the Game Boy Color compatibility flag
+     * @return a copy of the CGB Compatibility flag
      */
     public byte[] getCgbFlag() {
         return cgbFlag.clone();
     }
 
     /**
-     * @return The destination code
+     * @return Destination code
      */
     public int getDestCode() {
         return destCode;
     }
 
     /**
-     * @return A copy of the licensee code
+     * @return a copy of the Licensee Code
      */
     public byte[] getLicenseeCode() {
         return licenseeCode.clone();
     }
 
     /**
-     * @return A copy of the header checksum
+     * @return a copy of the Header Checksum
      */
     public byte[] getHeaderChecksum() {
         return headerChecksum.clone();
     }
 
     /**
-     * @return A copy of the global checksum
+     * @return a copy of the Global Checksum
      */
     public byte[] getGlobalChecksum() {
         return globalChecksum.clone();
@@ -188,9 +188,9 @@ public class Collection {
      * This factory method simplifies the creation of Collection objects
      * by extracting all necessary data from a ROM file.
      *
-     * @param reader The RomReader containing ROM data
-     * @param name User-provided name for the ROM
-     * @return A new Collection entity containing the ROM data
+     * @param reader the RomReader containing ROM data
+     * @param name user-provided name for the ROM
+     * @return a new Collection entity containing the ROM data
      * @throws IllegalArgumentException if the name is too long
      */
     public static Collection fromRomReader(RomReader reader, String name) {

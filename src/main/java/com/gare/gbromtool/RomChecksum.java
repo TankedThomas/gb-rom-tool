@@ -1,7 +1,9 @@
 package com.gare.gbromtool;
 
 /**
- * This class handles checksum calculation and verification for RomReader.
+ * Handles checksum calculation and verification for ROM data.
+ * Implements Header Checksum and Global Checksum verification according to
+ * ROM specifications.
  *
  * @author Thomas Robinson 23191795
  */
@@ -10,16 +12,21 @@ public class RomChecksum {
     private final byte[] romData;
     private final RomReader reader;
 
+    /**
+     * Creates a new checksum validator for the given ROM data.
+     *
+     * @param romData the ROM data to validate
+     * @param reader the RomReader instance for validation flags
+     */
     public RomChecksum(byte[] romData, RomReader reader) {
         this.romData = romData;
         this.reader = reader;
     }
 
     /**
-     * This method calculates and compares the Header Checksum using the same
-     * method that the Boot ROM uses.
-     * If loading from database, trust the stored checksum is correct and return
-     * it without verification.
+     * Calculates and compares the Header Checksum using the same method that
+     * the Boot ROM uses.
+     * For database entries, returns true without verification.
      *
      * Boot ROM code:
      * uint8_t checksum = 0;
@@ -46,9 +53,8 @@ public class RomChecksum {
     }
 
     /**
-     * This method calculates and compares the Global Checksum.
-     * If loading from database, trust the stored checksum is correct and return
-     * it without verification.
+     * Calculates and compares the Global Checksum.
+     * For database entries, returns true without verification.
      *
      * @return true if the checksums match, false otherwise
      */
@@ -73,10 +79,20 @@ public class RomChecksum {
         return checksum == storedChecksum;
     }
 
+    /**
+     * Gets the stored Header Checksum as a formatted string.
+     *
+     * @return the Header Checksum in hexadecimal format
+     */
     public String getStoredHeaderChecksum() {
         return String.format("%02X", romData[0x014D] & 0xFF);
     }
 
+    /**
+     * Gets the stored Global Checksum as a formatted string.
+     *
+     * @return the Global Checksum in hexadecimal format
+     */
     public String getStoredGlobalChecksum() {
         return String.format("%04X", ((romData[0x014E] & 0xFF) << 8) | (romData[0x014F] & 0xFF));
     }

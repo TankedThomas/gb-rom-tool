@@ -1,7 +1,8 @@
 package com.gare.gbromtool;
 
 /**
- * This class defines the ROM specifications.
+ * Defines ROM specifications including header offsets and logo data.
+ * Contains constants and utilities for working with ROM data.
  *
  * @author Thomas Robinson 23191795
  */
@@ -48,12 +49,24 @@ public class RomSpecification {
         }
     }
 
-    // ROM header validation
+    /**
+     * Validates ROM Size against minimum requirements.
+     *
+     * @param size size of ROM data in bytes
+     * @return true if size is valid for a ROM file
+     */
     public static boolean isValidSize(int size) {
         return size >= HeaderOffset.GLOBAL_CHECKSUM.getOffset()
                 + HeaderOffset.GLOBAL_CHECKSUM.getLength();
     }
 
+    /**
+     * Extracts a field from ROM data at specified offset.
+     *
+     * @param romData complete ROM data
+     * @param field header offset enumeration specifying position and length
+     * @return byte array containing the extracted field
+     */
     public static byte[] extractField(byte[] romData, HeaderOffset field) {
         byte[] result = new byte[field.getLength()];
         System.arraycopy(romData, field.getOffset(), result, 0, field.getLength());

@@ -4,12 +4,19 @@ import java.sql.SQLException;
 import javax.swing.*;
 
 /**
- * This class contains the main method for executing the program.
+ * Main class containing program entry point.
+ * Initialises UI and database connection.
  *
  * @author Thomas Robinson 23191795
  */
 public class GbRomTool {
 
+    /**
+     * Main program entry point.
+     * Sets up look and feel, initialises UI and database.
+     *
+     * @param args command line arguments (not used)
+     */
     public static void main(String[] args) {
         try {
             UIManager.setLookAndFeel(UIManager.getCrossPlatformLookAndFeelClassName());

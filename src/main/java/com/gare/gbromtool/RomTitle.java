@@ -4,10 +4,9 @@ import java.nio.charset.StandardCharsets;
 import java.util.HexFormat;
 
 /**
- * This is a helper class for splitting the title and manufacturer code when
- * the latter exists.
- *
- * Attempts to solve the problem where some CGB ROMs have a manufacturer code
+ * Helper class for splitting the title and manufacturer code when the latter
+ * exists.
+ * Attempts to solve the problem where some CGB ROMs have a Manufacturer Code
  * added to the end of the allotted title string without any obvious separation
  * in the ROM header.
  *
@@ -21,28 +20,47 @@ public class RomTitle {
     private final String title;
     private final String manufacturerCode;
 
+    /**
+     * Creates a new ROM Title representation.
+     *
+     * @param title the ROM Title
+     * @param manufacturerCode the Manufacturer Code, if present
+     */
     public RomTitle(String title, String manufacturerCode) {
         this.title = title;
         this.manufacturerCode = manufacturerCode;
     }
 
+    /**
+     * @return the ROM Title
+     */
     public String getTitle() {
         return title;
     }
 
+    /**
+     * @return the Manufacturer Code
+     */
     public String getManufacturerCode() {
         return manufacturerCode;
     }
 
+    /**
+     * @return true if a Manufacturer Code is present
+     */
     public boolean hasManufacturerCode() {
         return !manufacturerCode.isEmpty();
     }
 
     /**
-     * This method splits the manufacturer code from the ROM title.
+     * Splits the manufacturer code from the ROM title.
+     * For Color-compatible ROMs, attempts to identify and separate a
+     * Manufacturer Code from the end of the title.
      *
-     * @param romData
-     * @return the ROM title and manufacturer code as two strings in a RomTitle
+     *
+     * @param romData the complete ROM data
+     * @return a RomTitle object containing separate ROM Title and Manufacturer
+     * Code strings
      */
     public static RomTitle parseTitle(byte[] romData) {
         boolean isCGB = (romData[0x143] == (byte) 0x80 || romData[0x143] == (byte) 0xC0);
@@ -58,7 +76,6 @@ public class RomTitle {
             // Check if the last 4 characters could be a manufacturer code
             if (fullTitle.length() >= 4) {
                 String potentialCode = fullTitle.substring(fullTitle.length() - 4);
-                System.out.println("Checking Manufacturer Code: " + potentialCode); // Debug
 
                 if (isValidManufacturerCode(potentialCode)) {
                     // Get actual title (everything before manufacturer code)
@@ -78,6 +95,13 @@ public class RomTitle {
         return new RomTitle(new String(titleBytes, StandardCharsets.US_ASCII).trim(), "");
     }
 
+    /**
+     * Checks if the last four characters of a ROM Title comprise a valid
+     * Manufacturer Code.
+     *
+     * @param code the Manufacturer Code to be checked
+     * @return true if the Manufacturer Code is valid, false otherwise
+     */
     private static boolean isValidManufacturerCode(String code) {
         if (code == null || code.length() != 4) {
             System.out.println("Manufacturer Code null or wrong length: "
@@ -100,9 +124,6 @@ public class RomTitle {
 
         boolean firstValid = "ABHKV".indexOf(first) >= 0;
         boolean lastValid = "ABDEFIJKPSUXY".indexOf(last) >= 0;
-
-        System.out.println(String.format("Code: %s, First: %c (%b), Last: %c (%b)",
-                code, first, firstValid, last, lastValid)); // Debug
 
         return firstValid && lastValid;
     }

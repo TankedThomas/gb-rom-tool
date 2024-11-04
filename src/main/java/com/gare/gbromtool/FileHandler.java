@@ -7,7 +7,7 @@ import javax.swing.JFileChooser;
 import javax.swing.filechooser.FileNameExtensionFilter;
 
 /**
- * This class handles the loading of files and calls RomReader to extract their
+ * Handles the loading of files and calls RomReader to extract their
  * information.
  *
  * @author Thomas Robinson 23191795
@@ -36,27 +36,40 @@ public class FileHandler {
         CANCELLED
     }
 
-    // Getter for current filename
+    /**
+     * @return name of currently loaded file, or empty string if none
+     */
     public String getCurrentFileName() {
         return currentRom != null ? currentRom.getName() : "";
     }
 
-    // Getter for current ROM title
+    /**
+     * @return title of currently loaded ROM, or empty string if none
+     */
     public String getCurrentRomTitle() {
         return romReader != null ? romReader.parseTitle().getTitle() : "";
     }
 
-    // Getter for current Manufacturer Code
+    /**
+     * @return manufacturer code of current ROM, or empty string if none
+     */
     public String getCurrentManufacturerCode() {
         return romReader != null ? romReader.parseTitle().getManufacturerCode() : "";
     }
 
-    // Getter for current RomReader
+    /**
+     * @return current RomReader instance
+     */
     public RomReader getCurrentRomReader() {
         return romReader;
     }
 
-    // Method to show file dialog and handle selection
+    /**
+     * Shows file selection dialog and processes selected file.
+     *
+     * @param parent parent component for dialog
+     * @return result of the file operation
+     */
     public FileOperationResult selectFile(Component parent) {
 
         int userSelection = chooseRom.showOpenDialog(parent);
@@ -83,6 +96,13 @@ public class FileHandler {
         return FileOperationResult.CANCELLED;
     }
 
+    /**
+     * Validates file extension against allowed types.
+     *
+     * @param file file to validate
+     * @param extensions array of allowed extensions
+     * @return true if file has valid extension
+     */
     public boolean validateFileType(File file, String[] extensions) {
         String fileName = file.getName().toLowerCase();
 

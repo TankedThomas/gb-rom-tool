@@ -12,7 +12,7 @@ import java.sql.Statement;
 import java.util.HexFormat;
 
 /**
- * This class manages the connection to and initialisation of the database.
+ * Manages the connection to and initialisation of the database.
  * Handles table creation, population of reference data, and database lifecycle.
  *
  * @author Thomas Robinson 23191795

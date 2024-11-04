@@ -5,12 +5,11 @@ import java.awt.event.ActionEvent;
 import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import javax.swing.*;
 
 /**
- * This class draws the user interface and handles GUI interactions.
+ * Draws the user interface and handles GUI interactions.
+ * Manages communication between UI components, database, and ROM data.
  *
  * @author Thomas Robinson 23191795
  */
@@ -47,6 +46,11 @@ public class UserInterface {
     public static final String GBL_CHKSUM = "Global Checksum";
     public static final String BOOT_LOGO = "Boot Logo";
 
+    /**
+     * Initialises UI components and database connections.
+     *
+     * @throws SQLException if database initialisation fails
+     */
     public UserInterface() throws SQLException {
         mainFrame = new JFrame();
         valueLabels = new HashMap<>();
@@ -97,6 +101,10 @@ public class UserInterface {
 
     }
 
+    /**
+     * Initialises the information panel with all required fields.
+     * Sets up layout and label-value pairs for ROM information display.
+     */
     private void initialiseInfoPanel() {
         // Top panel spacing
 //        topPanel.setBorder(BorderFactory.createEmptyBorder(5, 0, 5, 0)); // Reduce from 10
@@ -153,6 +161,15 @@ public class UserInterface {
         clearValues();
     }
 
+    /**
+     * Adds a field to the information panel.
+     *
+     * @param x grid x position
+     * @param y grid y position
+     * @param fieldName name of the field
+     * @param labelConstraints constraints for label layout
+     * @param valueConstraints constraints for value layout
+     */
     private void addField(int x, int y, String fieldName,
             GridBagConstraints labelConstraints, GridBagConstraints valueConstraints) {
         labelConstraints.gridx = x;
@@ -180,10 +197,18 @@ public class UserInterface {
         infoPanel.add(value, valueConstraints);
     }
 
+    /**
+     * Clears all displayed values from the interface.
+     */
     private void clearValues() {
         valueLabels.values().forEach(label -> label.setText(""));
     }
 
+    /**
+     * Updates all displayed values with data from a ROM.
+     *
+     * @param reader RomReader containing ROM data
+     */
     private void updateValues(RomReader reader) {
         if (reader == null) {
             clearValues();
@@ -251,6 +276,13 @@ public class UserInterface {
         }
     }
 
+    /**
+     * Formats a byte array into a hexadecimal string.
+     * Handles null or empty arrays by returning "Unknown".
+     *
+     * @param bytes the byte array to format
+     * @return formatted hexadecimal string or "Unknown" if invalid input
+     */
     private String formatHexByte(byte[] bytes) {
         if (bytes == null || bytes.length == 0) {
             return "Unknown";
@@ -258,6 +290,13 @@ public class UserInterface {
         return String.format("%02X", bytes[0]).toUpperCase(); // Changed to match your format
     }
 
+    /**
+     * Formats a Destination code into a human-readable string.
+     * Includes both description and hex code.
+     *
+     * @param code the destination code to format
+     * @return formatted string describing region and hex code
+     */
     private String formatDestination(int code) {
         return switch (code) {
             case 0x00 ->
@@ -269,6 +308,13 @@ public class UserInterface {
         };
     }
 
+    /**
+     * Formats a CGB Compatibility flag into a human-readable string.
+     * Includes both compatibility level and hex code when applicable.
+     *
+     * @param flag the CGB Compatibility flag to format
+     * @return formatted string describing compatibility status
+     */
     private String formatGBCFlag(byte[] flag) {
         if (flag == null || flag.length == 0) {
             return "No";
@@ -283,6 +329,10 @@ public class UserInterface {
         };
     }
 
+    /**
+     * Handles selection and loading of ROM files.
+     * Displays appropriate error messages if loading fails.
+     */
     private void handleFileSelection() {
         FileHandler.FileOperationResult result = fileHandler.selectFile(mainFrame);
 
@@ -325,11 +375,17 @@ public class UserInterface {
         }
     }
 
+    /**
+     * Handles saving current ROM data to the database.
+     */
     private void handleFileSave() {
         String defaultName = fileHandler.getCurrentFileName().replaceFirst("[.][^.]+$", "");
         collectionManager.saveRomToCollection(fileHandler.getCurrentRomReader(), defaultName);
     }
 
+    /**
+     * Makes the main window visible.
+     */
     public void show() {
         mainFrame.setVisible(true);
     }

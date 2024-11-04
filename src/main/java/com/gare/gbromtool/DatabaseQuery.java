@@ -5,8 +5,8 @@ import java.util.ArrayList;
 import java.util.HexFormat;
 
 /**
- * This class contains all the standard database queries for passing information
- * to RomReader.
+ * Contains all the standard database queries for passing information to
+ * RomReader.
  *
  * @author Thomas Robinson 23191795
  */
@@ -18,6 +18,15 @@ public class DatabaseQuery {
         this.conn = dbManager.getConnection();
     }
 
+    /**
+     * Gets the description for a given Cartridge Type code.
+     * Queries the CartridgeType table using the provided code.
+     *
+     * @param typeCode Cartridge Type code in hex format
+     * @return description of the Cartridge Type, or "Unknown cartridge type"
+     * if not found
+     * @throws SQLException if database query fails
+     */
     public String getCartridgeTypeDescription(String typeCode) throws SQLException {
         try {
             byte[] typeCodeBytes = HexFormat.of().parseHex(typeCode);
@@ -41,6 +50,15 @@ public class DatabaseQuery {
         return "Unknown cartridge type";
     }
 
+    /**
+     * Retrieves ROM Size information based on size code.
+     * Returns a formatted string containing size in KiB/MiB, bits, and number
+     * of banks.
+     *
+     * @param sizeCode the ROM Size code from the ROM header
+     * @return formatted string describing ROM Size and bank information
+     * @throws SQLException if database query fails
+     */
     public String getROMSizeInKiB(int sizeCode) throws SQLException {
         ResultSet ROMSizeInKiB;
         String suffix = "KiB";
@@ -70,6 +88,16 @@ public class DatabaseQuery {
         return sizes.toString();
     }
 
+    /**
+     * Retrieves RAM Size information based on size code.
+     * Returns a formatted string containing size in KiB, bits, and number of
+     * banks.
+     * Handles special cases like "No RAM" and single bank configurations.
+     *
+     * @param sizeCode the RAM Size code from the ROM header
+     * @return formatted string describing RAM Size and bank information
+     * @throws SQLException if database query fails
+     */
     public String getRAMSizeInKiB(int sizeCode) throws SQLException {
         ResultSet RAMSizeInKiB;
         String suffix = " x 8 KiB banks";
@@ -103,6 +131,18 @@ public class DatabaseQuery {
         return sizes.toString();
     }
 
+    /**
+     * Gets the publisher name for a given Licensee Code.
+     * Handles both Old (1-byte) and New (2-byte) Licensee Codes.
+     * Queries either OldLicenseeCode or NewLicenseeCode table based on code
+     * length.
+     *
+     * @param licenseeCode the Licensee Code as bytes
+     * @return name of the publisher, or "Unknown publisher" if not found
+     * @throws SQLException if database query fails
+     * @throws IllegalArgumentException if Licensee Code is null or has invalid
+     * length
+     */
     public String getLicenseeCode(byte[] licenseeCode) throws SQLException {
         if (licenseeCode == null) {
             throw new IllegalArgumentException("Licensee Code cannot be null");
@@ -148,6 +188,7 @@ public class DatabaseQuery {
 
     /**
      * Saves ROM information to Collection table.
+     * Creates a new entry with the provided ROM data.
      *
      * @param rom the ROM file to save
      * @return true if save was successful, false otherwise
@@ -185,10 +226,12 @@ public class DatabaseQuery {
     /**
      * Checks if a ROM already exists in Collection based on title, revision,
      * and checksum.
+     * Used to prevent duplicate entries and handle updates.
      *
-     * @param title The ROM title
-     * @param romRev The ROM revision code
-     * @param globalChecksum The global checksum
+     *
+     * @param title the ROM title
+     * @param romRev the ROM revision code
+     * @param globalChecksum the global checksum
      * @return true if an identical ROM exists, false otherwise
      * @throws SQLException if database operation fails
      */
@@ -212,10 +255,11 @@ public class DatabaseQuery {
 
     /**
      * Updates an existing ROM entry in the Collection table.
+     * Matches ROM by title, revision, and checksum, then updates other fields.
      *
      * @param rom the ROM file to update
-     * @throws java.sql.SQLException
      * @return true if save was successful, false otherwise
+     * @throws SQLException if database operation fails
      */
     public boolean updateRomInCollection(Collection rom) throws SQLException {
         String sql = """
@@ -249,8 +293,9 @@ public class DatabaseQuery {
     /**
      * Retrieves all ROMs from the Collection table in a format suitable for
      * display.
+     * Orders results by title, revision, and checksum.
      *
-     * @return List of ROMs in the collection
+     * @return a list of ROMs in the collection
      * @throws SQLException if database operation fails
      */
     public ArrayList<Collection> getAllRoms() throws SQLException {
@@ -285,9 +330,10 @@ public class DatabaseQuery {
     }
 
     /**
-     * Debug method to print all ROMs in the Collection table with more details.
+     * Debug method to print all ROMs in the Collection table with details.
+     * Outputs name, title, revision, and checksum information to console.
      *
-     * @throws SQLException
+     * @throws SQLException if database query fails
      */
     public void printAllRoms() throws SQLException {
         String sql = """
@@ -311,6 +357,13 @@ public class DatabaseQuery {
         }
     }
 
+    /**
+     * Helper method to convert byte arrays to hexadecimal strings.
+     * Used for debug output and data validation.
+     *
+     * @param bytes the byte array to convert
+     * @return hexadecimal string representation, or "null" if input is null
+     */
     private String bytesToHex(byte[] bytes) {
         return bytes != null ? HexFormat.of().formatHex(bytes) : "null";
     }

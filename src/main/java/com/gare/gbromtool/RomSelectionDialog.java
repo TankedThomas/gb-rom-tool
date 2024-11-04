@@ -72,6 +72,7 @@ public class RomSelectionDialog extends JDialog {
 
     /**
      * Refreshes the list of ROMs from the database.
+     * Updates the display with current database contents.
      */
     public final void refreshRomList() {
         listModel.clear();
@@ -89,7 +90,7 @@ public class RomSelectionDialog extends JDialog {
     /**
      * Shows the dialog and returns the selected ROM entry.
      *
-     * @return The selected RomEntry, or null if cancelled
+     * @return the selected RomEntry, or null if cancelled
      */
     public Collection showDialog() {
         setVisible(true);

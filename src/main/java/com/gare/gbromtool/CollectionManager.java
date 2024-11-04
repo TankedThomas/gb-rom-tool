@@ -5,8 +5,9 @@ import javax.swing.JFrame;
 import javax.swing.JOptionPane;
 
 /**
- * This class manages interactions between the UI, ROM data, and the Collection
+ * Manages interactions between the UI, ROM data, and the Collection
  * table in the database.
+ * Handles saving and updating ROM information while providing user feedback.
  *
  * @author Thomas Robinson 23191795
  */
@@ -22,20 +23,31 @@ public class CollectionManager {
         this.parentFrame = parentFrame;
     }
 
-    // Test helper methods
+    /**
+     * Enables test mode for automated testing.
+     * When enabled, skips user interaction dialogs.
+     *
+     * @param testMode true to enable test mode
+     */
     public void setTestMode(boolean testMode) {
         this.testMode = testMode;
     }
 
+    /**
+     * Sets the result to return in test mode for confirmation dialogs.
+     *
+     * @param result true to simulate user confirmation
+     */
     public void setTestConfirmationResult(boolean result) {
         this.testConfirmationResult = result;
     }
 
     /**
      * Saves the current ROM's information to the Collection table.
+     * Prompts user for name and handles duplicate detection.
      *
-     * @param reader The RomReader containing the ROM data
-     * @param defaultName Default name to suggest to the user
+     * @param reader the RomReader containing the ROM data
+     * @param defaultName default name to suggest to the user
      * @return true if save was successful, false if cancelled or failed
      */
     public boolean saveRomToCollection(RomReader reader, String defaultName) {
@@ -94,6 +106,12 @@ public class CollectionManager {
         }
     }
 
+    /**
+     * Displays a confirmation dialog for overwriting existing ROM data.
+     * In test mode, returns the preset test result.
+     *
+     * @return true if user confirms overwrite
+     */
     private boolean confirmOverwrite() {
         if (testMode) {
             return testConfirmationResult;
@@ -106,6 +124,13 @@ public class CollectionManager {
         return choice == JOptionPane.YES_OPTION;
     }
 
+    /**
+     * Prompts the user for a ROM name.
+     * Validates input length and handles cancellation.
+     *
+     * @param defaultName default name to display in prompt
+     * @return user-inputted name, or null if cancelled
+     */
     private String promptForName(String defaultName) {
         if (testMode) {
             return defaultName;  // In test mode, just return the default name
@@ -123,14 +148,32 @@ public class CollectionManager {
         return name;
     }
 
+    /**
+     * Displays an error message to the user.
+     *
+     * @param message error message to display
+     * @param title dialog title
+     * @param messageType type of message (e.g., ERROR_MESSAGE)
+     */
     private void showError(String message, String title, int messageType) {
         JOptionPane.showMessageDialog(parentFrame, message, title, messageType);
     }
 
+    /**
+     * Displays a success message to the user.
+     *
+     * @param message success message to display
+     */
     private void showSuccess(String message) {
         JOptionPane.showMessageDialog(parentFrame, message, "Save Successful", JOptionPane.INFORMATION_MESSAGE);
     }
 
+    /**
+     * Handles database errors by logging and displaying error message.
+     *
+     * @param message error context message
+     * @param ex the SQLException that occurred
+     */
     private void handleDatabaseError(String message, SQLException ex) {
         System.err.println(message + ex.getMessage());
         showError("Error saving to database: " + ex.getMessage(), "Database Error", JOptionPane.ERROR_MESSAGE);
