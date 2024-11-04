@@ -75,7 +75,7 @@ public class RomChecksumTest {
     @Test
     public void testVerifyHeaderChecksum() throws IOException {
         // Create ROM with valid header checksum
-        byte[] romData = new byte[0x150];  // Minimum ROM size
+        byte[] romData = new byte[0x150];  // Minimum ROM Size
         System.arraycopy(RomSpecification.BOOT_LOGO, 0, romData, 0x104, RomSpecification.BOOT_LOGO.length);
         System.arraycopy("TESTGAME".getBytes(), 0, romData, 0x134, "TESTGAME".length());
 
@@ -99,7 +99,7 @@ public class RomChecksumTest {
     @Test
     public void testVerifyGlobalChecksum() throws IOException {
         // Create ROM with valid global checksum
-        byte[] romData = new byte[0x150];  // Minimum ROM size
+        byte[] romData = new byte[0x150];  // Minimum ROM Size
         System.arraycopy(RomSpecification.BOOT_LOGO, 0, romData, 0x104, RomSpecification.BOOT_LOGO.length);
         System.arraycopy("TESTGAME".getBytes(), 0, romData, 0x134, "TESTGAME".length());
 
@@ -124,7 +124,7 @@ public class RomChecksumTest {
      */
     @Test
     public void testInvalidHeaderChecksum() throws IOException {
-        byte[] romData = new byte[0x150];  // Minimum ROM size
+        byte[] romData = new byte[0x150];  // Minimum ROM Size
         System.arraycopy(RomSpecification.BOOT_LOGO, 0, romData, 0x104, RomSpecification.BOOT_LOGO.length);
         System.arraycopy("TESTGAME".getBytes(), 0, romData, 0x134, "TESTGAME".length());
 
@@ -145,7 +145,7 @@ public class RomChecksumTest {
      */
     @Test
     public void testInvalidGlobalChecksum() throws IOException {
-        byte[] romData = new byte[0x150];  // Minimum ROM size
+        byte[] romData = new byte[0x150];  // Minimum ROM Size
         System.arraycopy(RomSpecification.BOOT_LOGO, 0, romData, 0x104, RomSpecification.BOOT_LOGO.length);
         System.arraycopy("TESTGAME".getBytes(), 0, romData, 0x134, "TESTGAME".length());
 
@@ -157,5 +157,36 @@ public class RomChecksumTest {
         RomReader reader = new RomReader(testFile);
 
         assertFalse("Should detect invalid global checksum", reader.verifyGlobalChecksum());
+    }
+
+    /**
+     * Tests that checksums are correctly retrieved from database.
+     * Verifies stored checksum values are returned unmodified.
+     *
+     * @throws IOException if ROM file operations fail
+     */
+    @Test
+    public void testDatabaseChecksums() throws IOException {
+        // Create ROM with known checksums
+        byte[] romData = new byte[0x150];
+        System.arraycopy(RomSpecification.BOOT_LOGO, 0, romData, 0x104, RomSpecification.BOOT_LOGO.length);
+        System.arraycopy("TESTGAME".getBytes(), 0, romData, 0x134, "TESTGAME".length());
+
+        // Set specific checksums
+        byte expectedHeader = (byte) 0xAB;
+        byte[] expectedGlobal = new byte[]{(byte) 0xCD, (byte) 0xEF};
+
+        romData[0x14D] = expectedHeader;
+        romData[0x14E] = expectedGlobal[0];
+        romData[0x14F] = expectedGlobal[1];
+
+        File testFile = TestUtils.createTestRom(romData);
+        RomReader reader = new RomReader(testFile, true);
+
+        // Verify retrieved checksums match what we stored
+        assertArrayEquals("Header Checksum mismatch",
+                new byte[]{expectedHeader}, reader.getHeaderChecksum());
+        assertArrayEquals("Global Checksum mismatch",
+                expectedGlobal, reader.getGlobalChecksum());
     }
 }
