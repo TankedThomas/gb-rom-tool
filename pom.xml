@@ -6,7 +6,7 @@
 
     <groupId>com.gare.gbromtool</groupId>
     <artifactId>gb-rom-tool</artifactId>
-    <version>1.5-SNAPSHOT</version>
+    <version>1.9-SNAPSHOT</version>
     <packaging>jar</packaging>
 
     <properties>
@@ -58,6 +58,14 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.13.0</version>
+				<configuration>
+                    <archive>
+                        <manifest>
+                            <addClasspath>true</addClasspath>
+                            <mainClass>com.gare.gbromtool.GbRomTool</mainClass>
+                        </manifest>
+                    </archive>
+                </configuration>
             </plugin>
         </plugins>
     </build>

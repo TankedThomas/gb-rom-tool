@@ -1,5 +1,6 @@
 package com.gare.gbromtool;
 
+import java.io.IOException;
 import org.junit.Before;
 import org.junit.Test;
 import static org.junit.Assert.*;
@@ -8,6 +9,7 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
 import java.util.HexFormat;
 import org.junit.After;
 import org.junit.AfterClass;
@@ -91,6 +93,46 @@ public class DatabaseManagerTest {
                 }
             }
         }
+    }
+
+    /**
+     * Tests manufacturer code storage in Collection table.
+     * Verifies that manufacturer codes are properly saved and retrieved.
+     *
+     * @throws SQLException if database operations fail
+     * @throws IOException if ROM file operations fail
+     */
+    @Test
+    public void testManufacturerCode() throws SQLException, IOException {
+        // Create ROM with manufacturer code
+        RomReader reader = TestUtils.createTestRomReader("TESTGAMEBXTJ");  // Title with mfr code
+        Collection rom = Collection.fromRomReader(reader, "Test ROM");
+
+        // Save and verify
+        assertTrue(dbQuery.saveRomToCollection(rom));
+        ArrayList<Collection> roms = dbQuery.getAllRoms();
+        assertFalse("Collection should not be empty", roms.isEmpty());
+        assertEquals("BXTJ", roms.get(0).getManufacturerCode());
+    }
+
+    /**
+     * Tests that null manufacturer code is handled properly.
+     * Verifies that ROMs without manufacturer code can be saved and retrieved.
+     *
+     * @throws SQLException if database operations fail
+     * @throws IOException if ROM file operations fail
+     */
+    @Test
+    public void testNullManufacturerCode() throws SQLException, IOException {
+        // Create ROM without manufacturer code
+        RomReader reader = TestUtils.createTestRomReader("TESTGAME");
+        Collection rom = Collection.fromRomReader(reader, "Test ROM");
+
+        // Save and verify
+        assertTrue(dbQuery.saveRomToCollection(rom));
+        ArrayList<Collection> roms = dbQuery.getAllRoms();
+        assertFalse("Collection should not be empty", roms.isEmpty());
+        assertNull("Manufacturer code should be null", roms.get(0).getManufacturerCode());
     }
 
     /**
@@ -252,8 +294,8 @@ public class DatabaseManagerTest {
 
         // Verify all required columns exist
         String[] expectedColumns = {
-            "TITLE", "NAME", "MFT_CODE", "TYPE_CODE", "ROM_REV", 
-            "ROM_SIZE_CODE", "RAM_SIZE_CODE", "SGB_FLAG", "CGB_FLAG", 
+            "TITLE", "NAME", "MFT_CODE", "TYPE_CODE", "ROM_REV",
+            "ROM_SIZE_CODE", "RAM_SIZE_CODE", "SGB_FLAG", "CGB_FLAG",
             "DEST_CODE", "LICENSEE_CODE", "HEAD_CHKSM", "GLOBAL_CHKSM"
         };
 
