@@ -17,19 +17,96 @@ public class RomReader {
     private final byte[] romData;
     private final RomChecksum checksum;
     byte CGBFlag[];
+    private final boolean loadFromDatabase;
 
+    /**
+     * Constructs a RomReader from a ROM file.
+     *
+     * @param romFile the ROM file to read
+     * @throws IOException if there's an error reading the file
+     */
     public RomReader(File romFile) throws IOException {
+        this(romFile, false);
+    }
+
+    /**
+     * Constructs a RomReader from a ROM file with a flag indicating database
+     * origin.
+     *
+     * @param romFile the ROM file to read
+     * @param loadFromDatabase flag indicating if data is from database
+     * @throws IOException if there is an error reading the file
+     */
+    public RomReader(File romFile, boolean loadFromDatabase) throws IOException {
+        // Get flag value to check the load origin of the ROM
+        this.loadFromDatabase = loadFromDatabase;
+
         // Read the ROM file into the romData byte array
         this.romData = Files.readAllBytes(romFile.toPath());
-        if (this.romData.length < 0x150) {
+        // Make sure the ROM is not being loaded from the database
+        // and that it is a valid length
+        if (!loadFromDatabase && this.romData.length < 0x150) {
             throw new IOException("File is too small to be a valid Game Boy ROM");
         }
         this.checksum = new RomChecksum(this.romData);
     }
 
     /**
+     * Constructs a RomReader from a Collection object.
+     * Creates a minimal valid ROM data structure from the database information
+     *
+     * @param rom the Collection object containing ROM data
+     */
+    public RomReader(Collection rom) {
+        this.loadFromDatabase = true;
+
+        // Create minimal ROM data structure
+        byte[] minData = new byte[0x150];
+
+        // Copy header data from Collection
+        System.arraycopy(RomSpecification.BOOT_LOGO, 0, minData, 0x104, RomSpecification.BOOT_LOGO.length);
+
+        byte[] titleBytes = rom.getTitle().getBytes(StandardCharsets.US_ASCII);
+        String mftCode = rom.getManufacturerCode();
+
+        // If there's a manufacturer code, append it in the appropriate position
+        if (mftCode != null && !mftCode.isEmpty()) {
+            byte[] mftBytes = mftCode.getBytes(StandardCharsets.US_ASCII);
+            // Position manufacturer code at end of title area
+            System.arraycopy(mftBytes, 0, minData, 0x13F, Math.min(mftBytes.length, 4));
+        }
+
+        System.arraycopy(titleBytes, 0, minData, 0x134, Math.min(titleBytes.length, 16));
+
+        System.arraycopy(rom.getCgbFlag(), 0, minData, 0x143, 1);
+        minData[0x146] = rom.getSgbFlag() ? (byte) 0x03 : (byte) 0x00;
+        System.arraycopy(rom.getTypeCode(), 0, minData, 0x147, 1);
+        minData[0x148] = (byte) rom.getRomSizeCode();
+        minData[0x149] = (byte) rom.getRamSizeCode();
+        minData[0x14A] = (byte) rom.getDestCode();
+
+        // Handle licensee code directly from database
+        byte[] licenseeCode = rom.getLicenseeCode();
+        if (licenseeCode.length == 2) {
+            // New format - set old licensee code to 0x33 and copy new code to correct position
+            minData[0x14B] = 0x33;
+            System.arraycopy(licenseeCode, 0, minData, 0x144, 2);
+        } else {
+            // Old format - copy directly to old position
+            System.arraycopy(licenseeCode, 0, minData, 0x14B, 1);
+        }
+
+        System.arraycopy(rom.getRomRev(), 0, minData, 0x14C, 1);
+        System.arraycopy(rom.getHeaderChecksum(), 0, minData, 0x14D, 1);
+        System.arraycopy(rom.getGlobalChecksum(), 0, minData, 0x14E, 2);
+
+        this.romData = minData;
+        this.checksum = new RomChecksum(this.romData);
+    }
+
+    /**
      * Gets a copy of the ROM data.
-     * This method is primarily used for testing purposes.
+     * This method is primarily used for testing purposes
      *
      * @return a defensive copy of the ROM data
      */
@@ -134,11 +211,12 @@ public class RomReader {
     public byte[] getLicenseeCode() {
         byte licenseeCode[];
 
+        // Check for New Licensee Code
         if (romData[0x14B] == 0x33) {
-            licenseeCode = new byte[2];
+            licenseeCode = new byte[2]; // Using New Licensee Code
             System.arraycopy(romData, 0x144, licenseeCode, 0, 2);
         } else {
-            licenseeCode = new byte[1];
+            licenseeCode = new byte[1]; // Using Old Licensee Code
             System.arraycopy(romData, 0x14B, licenseeCode, 0, 1);
         }
 
@@ -148,7 +226,7 @@ public class RomReader {
     /**
      * This method extracts the ROM size from the ROM header as an integer.
      * ROM size is stored as hexadecimal but only 00-08 are used,
-     * so using an integer simplifies this method.
+     * so using an integer simplifies this method
      *
      * @return the ROM size as an unsigned integer
      */
@@ -160,7 +238,7 @@ public class RomReader {
     /**
      * This method extracts the RAM size from the ROM header as an integer.
      * RAM size is stored as a hexadecimal but only 00-05 are used,
-     * so using an integer simplifies this method.
+     * so using an integer simplifies this method
      *
      * @return the ROM size as an unsigned integer
      */
@@ -173,7 +251,7 @@ public class RomReader {
      * This method extracts the Destination Code from the ROM header as an
      * integer.
      * Destination Code is stored as hexadecimal but only 00-01 are used,
-     * so using an integer simplifies this method.
+     * so using an integer simplifies this method
      *
      * @return the Destination Code as an unsigned integer
      */
@@ -212,6 +290,13 @@ public class RomReader {
         return headerChecksum;
     }
 
+    /**
+     * Verifies the header checksum.
+     * For both file and database entries, compares stored checksum against
+     * calculated value.
+     *
+     * @return true if checksum is valid, false otherwise
+     */
     public boolean verifyHeaderChecksum() {
         return checksum.verifyHeaderChecksum();
     }
@@ -236,10 +321,22 @@ public class RomReader {
         return globalChecksum;
     }
 
+    /**
+     * Verifies the global checksum.
+     * For both file and database entries, compares stored checksum against
+     * calculated value
+     *
+     * @return true if checksum is valid, false otherwise
+     */
     public boolean verifyGlobalChecksum() {
         return checksum.verifyGlobalChecksum();
     }
 
+    /**
+     * Retrieves the Global Checksum from the database.
+     *
+     * @return the Global Checksum
+     */
     public String getStoredGlobalChecksum() {
         return checksum.getStoredGlobalChecksum();
     }
