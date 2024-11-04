@@ -1,6 +1,7 @@
 package com.gare.gbromtool;
 
 import java.sql.*;
+import java.util.ArrayList;
 import java.util.HexFormat;
 
 /**
@@ -244,9 +245,46 @@ public class DatabaseQuery {
     }
 
     /**
+     * Retrieves all ROMs from the Collection table in a format suitable for
+     * display.
+     *
+     * @return List of ROMs in the collection
+     * @throws SQLException if database operation fails
+     */
+    public ArrayList<Collection> getAllRoms() throws SQLException {
+        ArrayList<Collection> roms = new ArrayList<>();
+        String sql = """
+                 SELECT * FROM Collection 
+                 ORDER BY title, rom_rev, global_chksm
+                 """;
+
+        try (Statement stmt = conn.createStatement(); ResultSet rs = stmt.executeQuery(sql)) {
+
+            while (rs.next()) {
+                Collection rom = new Collection(
+                        rs.getString("name"),
+                        rs.getString("title"),
+                        rs.getBytes("type_code"),
+                        rs.getBytes("rom_rev"),
+                        rs.getInt("rom_size_code"),
+                        rs.getInt("ram_size_code"),
+                        rs.getBoolean("sgb_flag"),
+                        rs.getBytes("cgb_flag"),
+                        rs.getInt("dest_code"),
+                        rs.getBytes("licensee_code"),
+                        rs.getBytes("head_chksm"),
+                        rs.getBytes("global_chksm")
+                );
+                roms.add(rom);
+            }
+        }
+        return roms;
+    }
+
+    /**
      * Debug method to print all ROMs in the Collection table with more details.
      *
-     * @throws java.sql.SQLException
+     * @throws SQLException
      */
     public void printAllRoms() throws SQLException {
         String sql = """
