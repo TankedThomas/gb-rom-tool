@@ -23,6 +23,7 @@ public class CollectionTest {
         Collection rom = new Collection(
                 "Test Name",
                 "Test Title",
+                "ABCD",
                 SAMPLE_BYTES,
                 SAMPLE_BYTES,
                 0,
@@ -52,6 +53,7 @@ public class CollectionTest {
         new Collection(
                 longName,
                 "Test Title",
+                "ABCD",
                 SAMPLE_BYTES,
                 SAMPLE_BYTES,
                 0,
@@ -80,6 +82,7 @@ public class CollectionTest {
         new Collection(
                 "Test Name",
                 longTitle, // Invalid title length
+                "ABCD",
                 SAMPLE_BYTES,
                 SAMPLE_BYTES,
                 0,
@@ -106,6 +109,7 @@ public class CollectionTest {
         Collection rom = new Collection(
                 "Test Name",
                 "Test Title",
+                "ABCD",
                 mutableBytes, // Pass the mutable array
                 SAMPLE_BYTES,
                 0,
@@ -153,6 +157,7 @@ public class CollectionTest {
         new Collection(
                 null, // Invalid null name
                 "Title",
+                "ABCD",
                 SAMPLE_BYTES,
                 SAMPLE_BYTES,
                 0,
@@ -176,6 +181,7 @@ public class CollectionTest {
         new Collection(
                 "Name",
                 null, // Invalid null title
+                "ABCD",
                 SAMPLE_BYTES,
                 SAMPLE_BYTES,
                 0,
@@ -202,6 +208,7 @@ public class CollectionTest {
         Collection rom = new Collection(
                 "Test",
                 "Test",
+                "ABCD",
                 original, // Array that will be modified
                 SAMPLE_BYTES,
                 0,

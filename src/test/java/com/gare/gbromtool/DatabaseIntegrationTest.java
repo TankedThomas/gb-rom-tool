@@ -89,6 +89,7 @@ public class DatabaseIntegrationTest {
         Collection updatedRom = new Collection(
                 "Updated Name",
                 testRom.getTitle(),
+                testRom.getManufacturerCode(),
                 testRom.getTypeCode(),
                 testRom.getRomRev(),
                 testRom.getRomSizeCode(),
@@ -121,6 +122,7 @@ public class DatabaseIntegrationTest {
         Collection testRomV2 = new Collection(
                 "Test ROM v2",
                 testRom.getTitle(),
+                testRom.getManufacturerCode(),
                 testRom.getTypeCode(),
                 newRev, // Different revision
                 testRom.getRomSizeCode(),
@@ -187,6 +189,7 @@ public class DatabaseIntegrationTest {
         Collection invalidRom = new Collection(
                 "Test Name",
                 "Test Title",
+                "ABCD",
                 oversizedArray, // This should be too large for the database column
                 testRom.getRomRev(),
                 testRom.getRomSizeCode(),

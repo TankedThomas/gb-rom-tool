@@ -252,9 +252,9 @@ public class DatabaseManagerTest {
 
         // Verify all required columns exist
         String[] expectedColumns = {
-            "TITLE", "NAME", "TYPE_CODE", "ROM_REV", "ROM_SIZE_CODE",
-            "RAM_SIZE_CODE", "SGB_FLAG", "CGB_FLAG", "DEST_CODE",
-            "LICENSEE_CODE", "HEAD_CHKSM", "GLOBAL_CHKSM"
+            "TITLE", "NAME", "MFT_CODE", "TYPE_CODE", "ROM_REV", 
+            "ROM_SIZE_CODE", "RAM_SIZE_CODE", "SGB_FLAG", "CGB_FLAG", 
+            "DEST_CODE", "LICENSEE_CODE", "HEAD_CHKSM", "GLOBAL_CHKSM"
         };
 
         int columnCount = 0;
