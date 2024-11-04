@@ -13,6 +13,7 @@ import java.util.HexFormat;
 
 /**
  * This class manages the connection to and initialisation of the database.
+ * Handles table creation, population of reference data, and database lifecycle.
  *
  * @author Thomas Robinson 23191795
  */
@@ -25,9 +26,16 @@ public class DatabaseManager {
 
     private static DatabaseManager instance;
 
+    /**
+     * Gets or creates the singleton instance of DatabaseManager.
+     * Creates a new connection if none exists or if current connection is
+     * closed.
+     *
+     * @return the DatabaseManager instance
+     * @throws SQLException if database connection fails
+     */
     public static synchronized DatabaseManager getInstance() throws SQLException {
         if (instance == null || instance.conn == null || instance.conn.isClosed()) {
-            dropDatabase();
             instance = new DatabaseManager();
         }
         if (instance.conn == null) {
@@ -43,10 +51,21 @@ public class DatabaseManager {
         }
     }
 
+    /**
+     * Gets the current database connection.
+     *
+     * @return the active database Connection
+     */
     public Connection getConnection() {
         return this.conn;
     }
 
+    /**
+     * Establishes connection to the embedded Derby database.
+     * Creates a new database if one doesn't exist.
+     *
+     * @throws SQLException if connection fails
+     */
     private void establishConnection() throws SQLException {
         if (this.conn == null) {
             try {
@@ -65,6 +84,10 @@ public class DatabaseManager {
         }
     }
 
+    /**
+     * Closes all database connections.
+     * Should be called when shutting down the application.
+     */
     public void closeConnections() {
         if (conn != null) {
             try {
@@ -77,11 +100,11 @@ public class DatabaseManager {
     }
 
     /**
-     * This method checks if a table already exists.
+     * Checks if a table already exists.
      *
-     * @param tableName
+     * @param tableName the name of the table to check
      * @return true if the table already exists, false otherwise
-     * @throws SQLException
+     * @throws SQLException if metadata query fails
      */
     private boolean tableExists(String tableName) throws SQLException {
         DatabaseMetaData meta = conn.getMetaData();
@@ -93,6 +116,11 @@ public class DatabaseManager {
         createTables();
     }
 
+    /**
+     * Completely removes the database.
+     * Attempts proper shutdown before deleting files.
+     * Should only be used for testing or complete reset.
+     */
     public static void dropDatabase() {
         if (instance != null) {
             instance.closeConnections();
@@ -120,6 +148,11 @@ public class DatabaseManager {
         }
     }
 
+    /**
+     * Recursively deletes a directory and its contents.
+     *
+     * @param directory the directory to delete
+     */
     private static void deleteDirectory(File directory) {
         File[] files = directory.listFiles();
         if (files != null) {
@@ -133,10 +166,15 @@ public class DatabaseManager {
         directory.delete();
     }
 
+    /**
+     * Cleans all tables in database by deleting all records.
+     * This affects both reference tables and the Collection table.
+     * Tables are emptied but not dropped.
+     *
+     * @throws SQLException if deletion operations fail
+     */
     public void cleanDatabase() throws SQLException {
         try (Statement stmt = conn.createStatement()) {
-            // Check if tables exist before trying to delete from them
-            DatabaseMetaData metaData = conn.getMetaData();
 
             String[] tables = {
                 "Collection", "CartridgeType", "ROMSize",
@@ -149,71 +187,78 @@ public class DatabaseManager {
                 }
             }
 
-            // Commit the deletes
+            // Commit the deletions
             conn.commit();
         }
     }
 
+    /**
+     * Cleans and recreates reference tables.
+     * Drops and recreates CartridgeType, ROMSize, RAMSize, and Licensee Code
+     * tables.
+     * Does not affect the Collection table.
+     *
+     * @throws SQLException if table recreation fails
+     */
+    private void cleanReferenceTables() throws SQLException {
+        try (Statement stmt = conn.createStatement()) {
+            String[] referenceTables = {
+                "CartridgeType", "ROMSize", "RAMSize",
+                "NewLicenseeCode", "OldLicenseeCode"
+            };
+
+            for (String table : referenceTables) {
+                if (tableExists(table)) {
+                    stmt.execute("DROP TABLE " + table);
+                }
+
+                switch (table) {
+                    case "CartridgeType" ->
+                        stmt.executeUpdate("CREATE TABLE CartridgeType ("
+                                + "type_code CHAR(2) FOR BIT DATA PRIMARY KEY,"
+                                + "type_description VARCHAR(100)"
+                                + ")");
+                    case "ROMSize" ->
+                        stmt.executeUpdate("CREATE TABLE ROMSize ("
+                                + "size_code INT PRIMARY KEY,"
+                                + "size_kib INT,"
+                                + "num_banks INT"
+                                + ")");
+                    case "RAMSize" ->
+                        stmt.executeUpdate("CREATE TABLE RAMSize ("
+                                + "size_code INT PRIMARY KEY,"
+                                + "size_kib INT,"
+                                + "num_banks INT"
+                                + ")");
+                    case "NewLicenseeCode" ->
+                        stmt.executeUpdate("CREATE TABLE NewLicenseeCode ("
+                                + "licensee_code CHAR(2) FOR BIT DATA PRIMARY KEY,"
+                                + "licensee_code_ascii VARCHAR(2),"
+                                + "publisher VARCHAR(100)"
+                                + ")");
+                    case "OldLicenseeCode" ->
+                        stmt.executeUpdate("CREATE TABLE OldLicenseeCode ("
+                                + "licensee_code CHAR(2) FOR BIT DATA PRIMARY KEY,"
+                                + "publisher VARCHAR(100)"
+                                + ")");
+                }
+
+                conn.commit();
+            }
+        }
+    }
+
+    /**
+     * Creates the database tables if they don't exist.
+     * Reference tables are recreated and repopulated with each run.
+     * Collection table is preserved between runs and only created if missing.
+     *
+     * @throws SQLException if table creation or population fails
+     */
     private void createTables() throws SQLException {
         try (Statement stmt = conn.createStatement()) {
-            // Create CartridgeType table if it doesn't exist
-            if (!tableExists("CartridgeType")) {
-                stmt.executeUpdate("CREATE TABLE CartridgeType ("
-                        + "type_code CHAR(2) FOR BIT DATA PRIMARY KEY,"
-                        // Hex value as binary (00-FF)
-                        + "type_description VARCHAR(100)"
-                        // Description as a string
-                        + ")");
-            }
-
-            // Create ROMSize table if it doesn't exist
-            if (!tableExists("ROMSize")) {
-                stmt.executeUpdate("CREATE TABLE ROMSize ("
-                        + "size_code INT PRIMARY KEY,"
-                        // Hex code as int (00-08)
-                        + "size_kib INT,"
-                        // Actual size in KiB
-                        + "num_banks INT"
-                        // Number of ROM banks
-                        + ")");
-            }
-
-            // Create RAMSize table if it doesn't exist
-            if (!tableExists("RAMSize")) {
-                stmt.executeUpdate("CREATE TABLE RAMSize ("
-                        + "size_code INT PRIMARY KEY,"
-                        // Hex code as int (00-05)
-                        + "size_kib INT,"
-                        // Actual size in KiB
-                        + "num_banks INT"
-                        // Number of RAM banks
-                        + ")");
-                conn.commit();
-            }
-
-            // Create NewLicenseeCode table if it doesn't exist
-            if (!tableExists("NewLicenseeCode")) {
-                stmt.executeUpdate("CREATE TABLE NewLicenseeCode ("
-                        + "licensee_code CHAR(2) FOR BIT DATA PRIMARY KEY,"
-                        // Hex value as binary (00-FF)
-                        + "licensee_code_ascii VARCHAR(2),"
-                        // ASCII translation of hex code as string
-                        + "publisher VARCHAR(100)"
-                        // Publisher name as a string
-                        + ")");
-                conn.commit();
-            }
-
-            // Create OldLicenseeCode table if it doesn't exist
-            if (!tableExists("OldLicenseeCode")) {
-                stmt.executeUpdate("CREATE TABLE OldLicenseeCode ("
-                        + "licensee_code CHAR(2) FOR BIT DATA PRIMARY KEY,"
-                        // Hex value as binary (00-FF)
-                        + "publisher VARCHAR(100)"
-                        // Publisher name as a string
-                        + ")");
-                conn.commit();
-            }
+            // Clean and recreate reference tables
+            cleanReferenceTables();
 
             // Create Collection table if it doesn't exist (blank by default)
             if (!tableExists("Collection")) {
@@ -237,21 +282,22 @@ public class DatabaseManager {
             }
 
             // Populate tables with initial data
-            populateCartridgeType(stmt);
+            populateCartridgeType();
             populateROMSize(stmt);
             populateRAMSize(stmt);
-            populateNewLicenseeCode(stmt);
-            populateOldLicenseeCode(stmt);
+            populateNewLicenseeCode();
+            populateOldLicenseeCode();
         }
     }
 
     /**
-     * Helper method to insert Cartridge Type as binary.
+     * Helper method to insert Cartridge Type data into the database.
+     * Converts hex string to binary data for storage.
      *
-     * @param pstmt
-     * @param hex
-     * @param description
-     * @throws SQLException
+     * @param pstmt prepared statement for insertion
+     * @param hex cartridge type code in hex format
+     * @param description human-readable description of the cartridge type
+     * @throws SQLException if insertion fails
      */
     private void insertCartridgeType(PreparedStatement pstmt, String hex, String description) throws SQLException {
         pstmt.setBytes(1, HexFormat.of().parseHex(hex));
@@ -259,11 +305,15 @@ public class DatabaseManager {
         pstmt.executeUpdate();
     }
 
-    private void populateCartridgeType(Statement stmt) throws SQLException {
+    /**
+     * Populates the CartridgeType table with all known Cartridge Types.
+     * Each type includes a binary type code and its description.
+     *
+     * @throws SQLException if population fails
+     */
+    private void populateCartridgeType() throws SQLException {
         String insertQuery = "INSERT INTO CartridgeType (type_code, type_description) VALUES (?, ?)";
         try (PreparedStatement pstmt = conn.prepareStatement(insertQuery)) {
-
-            // Add Cartridge Types
             insertCartridgeType(pstmt, "00", "ROM ONLY");
             insertCartridgeType(pstmt, "01", "MBC1");
             insertCartridgeType(pstmt, "02", "MBC1+RAM");
@@ -295,8 +345,15 @@ public class DatabaseManager {
         }
     }
 
+    /**
+     * Populates the ROMSize table with standard ROM sizes.
+     * Each entry includes size code, size in KiB, and number of banks.
+     * Sizes range from 32 KiB (2 banks) to 8 MiB (512 banks).
+     *
+     * @param stmt statement for executing SQL
+     * @throws SQLException if population fails
+     */
     private void populateROMSize(Statement stmt) throws SQLException {
-        // Add ROM sizes
         stmt.executeUpdate("INSERT INTO ROMSize VALUES (0, 32, 2)");     // 32 KiB,  2 banks
         stmt.executeUpdate("INSERT INTO ROMSize VALUES (1, 64, 4)");     // 64 KiB,  4 banks
         stmt.executeUpdate("INSERT INTO ROMSize VALUES (2, 128, 8)");    // 128 KiB, 8 banks
@@ -308,8 +365,15 @@ public class DatabaseManager {
         stmt.executeUpdate("INSERT INTO ROMSize VALUES (8, 8192, 512)"); // 8 MiB,   512 banks
     }
 
+    /**
+     * Populates the RAMSize table with standard RAM sizes.
+     * Each entry includes size code, size in KiB, and number of banks.
+     * Sizes range from no RAM to 128 KiB (16 banks of 8 KiB).
+     *
+     * @param stmt statement for executing SQL
+     * @throws SQLException if population fails
+     */
     private void populateRAMSize(Statement stmt) throws SQLException {
-        // Add RAM sizes
         stmt.executeUpdate("INSERT INTO RAMSize VALUES (0, 0, 0)");      // No RAM
         stmt.executeUpdate("INSERT INTO RAMSize VALUES (1, 2, 1)");      // 2 KiB,   unused (1 bank presumed)
         stmt.executeUpdate("INSERT INTO RAMSize VALUES (2, 8, 1)");      // 8 KiB,   1 x 8 KiB bank
@@ -320,232 +384,239 @@ public class DatabaseManager {
 
     /**
      * Helper method to insert New Licensee Code as binary.
+     * Converts hex string to binary data for storage.
      *
-     * @param pstmt
-     * @param hex
-     * @param ascii
-     * @param publisher
-     * @throws SQLException
+     * @param pstmt prepared statement for insertion
+     * @param ascii ASCII representation of the Licensee Code
+     * @param publisher the publisher name
+     * @throws SQLException if insertion fails
      */
-    private void insertNewLicenseeCode(PreparedStatement pstmt, String hex, String ascii, String publisher) throws SQLException {
+    private void insertNewLicenseeCode(PreparedStatement pstmt, String ascii, String publisher) throws SQLException {
         pstmt.setBytes(1, ascii.getBytes(StandardCharsets.US_ASCII));
         pstmt.setString(2, ascii);
         pstmt.setString(3, publisher);
         pstmt.executeUpdate();
     }
 
-    private void populateNewLicenseeCode(Statement stmt) throws SQLException {
+    /**
+     * Populates the NewLicenseeCode table with publisher information.
+     * Used for ROMs with 2-byte Licensee Codes.
+     * Each entry includes Licensee Code in hex (via helper method) and ASCII,
+     * and publisher name.
+     *
+     * @throws SQLException if population fails
+     */
+    private void populateNewLicenseeCode() throws SQLException {
         String insertQuery = "INSERT INTO NewLicenseeCode (licensee_code, licensee_code_ascii, publisher) VALUES (?, ?, ?)";
         try (PreparedStatement pstmt = conn.prepareStatement(insertQuery)) {
-
-            // Add New Licensee Codes
-            insertNewLicenseeCode(pstmt, "3030", "00", "None");
-            insertNewLicenseeCode(pstmt, "3031", "01", "Nintendo");
-            insertNewLicenseeCode(pstmt, "3032", "02", "Rocket Games");
-            insertNewLicenseeCode(pstmt, "3038", "08", "Capcom");
-            insertNewLicenseeCode(pstmt, "3039", "09", "Hot B Co.");
-            insertNewLicenseeCode(pstmt, "3041", "0A", "Jaleco");
-            insertNewLicenseeCode(pstmt, "3042", "0B", "Coconuts Japan");
-            insertNewLicenseeCode(pstmt, "3043", "0C", "Coconuts Japan/G.X.Media");
-            insertNewLicenseeCode(pstmt, "3048", "0H", "Starfish");
-            insertNewLicenseeCode(pstmt, "304C", "0L", "Warashi Inc.");
-            insertNewLicenseeCode(pstmt, "304E", "0N", "Nowpro");
-            insertNewLicenseeCode(pstmt, "3050", "0P", "Game Village");
-            insertNewLicenseeCode(pstmt, "3051", "0Q", "IE Institute");
-            insertNewLicenseeCode(pstmt, "3133", "13", "Electronic Arts Japan");
-            insertNewLicenseeCode(pstmt, "3138", "18", "Hudson Soft Japan");
-            insertNewLicenseeCode(pstmt, "3139", "19", "B-AI");
-            insertNewLicenseeCode(pstmt, "3141", "1A", "Yonoman");
-            insertNewLicenseeCode(pstmt, "3148", "1H", "Yojigen");
-            insertNewLicenseeCode(pstmt, "314D", "1M", "Microcabin Corporation");
-            insertNewLicenseeCode(pstmt, "314E", "1N", "Dazz");
-            insertNewLicenseeCode(pstmt, "3150", "1P", "Creatures Inc.");
-            insertNewLicenseeCode(pstmt, "3151", "1Q", "TDK Deep Impresion");
-            insertNewLicenseeCode(pstmt, "3230", "20", "KSS");
-            insertNewLicenseeCode(pstmt, "3232", "22", "Planning Office WADA");
-            insertNewLicenseeCode(pstmt, "3238", "28", "Kemco Japan");
-            insertNewLicenseeCode(pstmt, "3244", "2D", "Visit");
-            insertNewLicenseeCode(pstmt, "3248", "2H", "Ubisoft Japan");
-            insertNewLicenseeCode(pstmt, "324B", "2K", "NEC InterChannel");
-            insertNewLicenseeCode(pstmt, "324C", "2L", "Tam");
-            insertNewLicenseeCode(pstmt, "324D", "2M", "Jordan");
-            insertNewLicenseeCode(pstmt, "324E", "2N", "Smilesoft");
-            insertNewLicenseeCode(pstmt, "3250", "2P", "The Pokémon Company");
-            insertNewLicenseeCode(pstmt, "3330", "30", "Viacom New Media");
-            insertNewLicenseeCode(pstmt, "3334", "34", "Magifact");
-            insertNewLicenseeCode(pstmt, "3335", "35", "Hect");
-            insertNewLicenseeCode(pstmt, "3336", "36", "Codemasters");
-            insertNewLicenseeCode(pstmt, "3337", "37", "GAGA Communications");
-            insertNewLicenseeCode(pstmt, "3338", "38", "Laguna");
-            insertNewLicenseeCode(pstmt, "3339", "39", "Telstar Fun and Games");
-            insertNewLicenseeCode(pstmt, "333A", "3:", "Nintendo/Mani");
-            insertNewLicenseeCode(pstmt, "3345", "3E", "Gremlin Graphics");
-            insertNewLicenseeCode(pstmt, "3431", "41", "Ubi Soft Entertainment");
-            insertNewLicenseeCode(pstmt, "3432", "42", "Sunsoft");
-            insertNewLicenseeCode(pstmt, "3437", "47", "Spectrum Holobyte");
-            insertNewLicenseeCode(pstmt, "3444", "4D", "Malibu Games");
-            insertNewLicenseeCode(pstmt, "3446", "4F", "Eidos/U.S. Gold");
-            insertNewLicenseeCode(pstmt, "3447", "4G", "Playmates Inc.");
-            insertNewLicenseeCode(pstmt, "344A", "4J", "Fox Interactive");
-            insertNewLicenseeCode(pstmt, "344B", "4K", "Time Warner Interactive");
-            insertNewLicenseeCode(pstmt, "3453", "4S", "Black Pearl");
-            insertNewLicenseeCode(pstmt, "3458", "4X", "GT Interactive");
-            insertNewLicenseeCode(pstmt, "3459", "4Y", "Rare");
-            insertNewLicenseeCode(pstmt, "345A", "4Z", "Crave Entertainment");
-            insertNewLicenseeCode(pstmt, "3530", "50", "Absolute Entertainment");
-            insertNewLicenseeCode(pstmt, "3531", "51", "Acclaim");
-            insertNewLicenseeCode(pstmt, "3532", "52", "Activision");
-            insertNewLicenseeCode(pstmt, "3534", "54", "Take 2 Interactive");
-            insertNewLicenseeCode(pstmt, "3535", "55", "Hi Tech Expressions");
-            insertNewLicenseeCode(pstmt, "3536", "56", "LJN");
-            insertNewLicenseeCode(pstmt, "3538", "58", "Mattel");
-            insertNewLicenseeCode(pstmt, "3541", "5A", "Mindscape/Red Orb Ent.");
-            insertNewLicenseeCode(pstmt, "3544", "5D", "Midway");
-            insertNewLicenseeCode(pstmt, "3546", "5F", "American Softworks");
-            insertNewLicenseeCode(pstmt, "3547", "5G", "Majesco Sales Inc");
-            insertNewLicenseeCode(pstmt, "3548", "5H", "3DO");
-            insertNewLicenseeCode(pstmt, "354B", "5K", "Hasbro");
-            insertNewLicenseeCode(pstmt, "354C", "5L", "NewKidCo");
-            insertNewLicenseeCode(pstmt, "354D", "5M", "Telegames");
-            insertNewLicenseeCode(pstmt, "354E", "5N", "Metro3D");
-            insertNewLicenseeCode(pstmt, "3550", "5P", "Vatical Entertainment");
-            insertNewLicenseeCode(pstmt, "3551", "5Q", "LEGO Media");
-            insertNewLicenseeCode(pstmt, "3554", "5T", "Cryo Interactive");
-            insertNewLicenseeCode(pstmt, "3556", "5V", "Agetec Inc.");
-            insertNewLicenseeCode(pstmt, "3557", "5W", "Red Storm Ent./BKN Ent.");
-            insertNewLicenseeCode(pstmt, "3558", "5X", "Microids");
-            insertNewLicenseeCode(pstmt, "355A", "5Z", "Conspiracy Entertainment Corp.");
-            insertNewLicenseeCode(pstmt, "3630", "60", "Titus Interactive Studios");
-            insertNewLicenseeCode(pstmt, "3631", "61", "Virgin Interactive");
-            insertNewLicenseeCode(pstmt, "3634", "64", "LucasArts Entertainment");
-            insertNewLicenseeCode(pstmt, "3637", "67", "Ocean");
-            insertNewLicenseeCode(pstmt, "3639", "69", "Electronic Arts");
-            insertNewLicenseeCode(pstmt, "3646", "6F", "Electro Brain");
-            insertNewLicenseeCode(pstmt, "3647", "6G", "The Learning Company");
-            insertNewLicenseeCode(pstmt, "3648", "6H", "BBC");
-            insertNewLicenseeCode(pstmt, "364A", "6J", "Software 2000");
-            insertNewLicenseeCode(pstmt, "364C", "6L", "BAM! Entertainment");
-            insertNewLicenseeCode(pstmt, "364D", "6M", "Studio 3");
-            insertNewLicenseeCode(pstmt, "3650", "6P", "Ravensburger Interactive Media GmbH");
-            insertNewLicenseeCode(pstmt, "3651", "6Q", "Classified Games");
-            insertNewLicenseeCode(pstmt, "3652", "6R", "Sound Source Interactive");
-            insertNewLicenseeCode(pstmt, "3653", "6S", "TDK Mediactive");
-            insertNewLicenseeCode(pstmt, "3654", "6T", "Interactive Imagination");
-            insertNewLicenseeCode(pstmt, "3655", "6U", "DreamCatcher");
-            insertNewLicenseeCode(pstmt, "3656", "6V", "JoWood Productions");
-            insertNewLicenseeCode(pstmt, "3658", "6X", "Wannado Edition");
-            insertNewLicenseeCode(pstmt, "3659", "6Y", "LSP");
-            insertNewLicenseeCode(pstmt, "365A", "6Z", "ITE Media");
-            insertNewLicenseeCode(pstmt, "3730", "70", "Infogrames");
-            insertNewLicenseeCode(pstmt, "3731", "71", "Interplay");
-            insertNewLicenseeCode(pstmt, "3732", "72", "JVC Musical Industries Inc");
-            insertNewLicenseeCode(pstmt, "3735", "75", "SCI");
-            insertNewLicenseeCode(pstmt, "3738", "78", "THQ");
-            insertNewLicenseeCode(pstmt, "3739", "79", "Accolade");
-            insertNewLicenseeCode(pstmt, "3744", "7D", "Universal Interactive Studios");
-            insertNewLicenseeCode(pstmt, "3746", "7F", "Kemco");
-            insertNewLicenseeCode(pstmt, "3747", "7G", "Rage Software");
-            insertNewLicenseeCode(pstmt, "3748", "7H", "Encore");
-            insertNewLicenseeCode(pstmt, "374B", "7K", "BVM");
-            insertNewLicenseeCode(pstmt, "374C", "7L", "Simon & Schuster Interactive");
-            insertNewLicenseeCode(pstmt, "3837", "87", "Tsukuda Original");
-            insertNewLicenseeCode(pstmt, "3842", "8B", "Bulletproof Software");
-            insertNewLicenseeCode(pstmt, "3843", "8C", "Vic Tokai Inc.");
-            insertNewLicenseeCode(pstmt, "3846", "8F", "I\"Max");
-            insertNewLicenseeCode(pstmt, "384A", "8J", "General Entertainment");
-            insertNewLicenseeCode(pstmt, "384B", "8K", "Japan System Supply");
-            insertNewLicenseeCode(pstmt, "384D", "8M", "CyberFront");
-            insertNewLicenseeCode(pstmt, "384E", "8N", "Success");
-            insertNewLicenseeCode(pstmt, "3850", "8P", "SEGA Japan");
-            insertNewLicenseeCode(pstmt, "3931", "91", "Chun Soft");
-            insertNewLicenseeCode(pstmt, "3932", "92", "Video System");
-            insertNewLicenseeCode(pstmt, "3933", "93", "BEC");
-            insertNewLicenseeCode(pstmt, "3939", "99", "Victor Interactive Software");
-            insertNewLicenseeCode(pstmt, "3941", "9A", "Nichibutsu/Nihon Bussan");
-            insertNewLicenseeCode(pstmt, "3942", "9B", "Tecmo");
-            insertNewLicenseeCode(pstmt, "3943", "9C", "Imagineer");
-            insertNewLicenseeCode(pstmt, "3948", "9H", "Bottom Up");
-            insertNewLicenseeCode(pstmt, "394B", "9K", "Syscom");
-            insertNewLicenseeCode(pstmt, "394C", "9L", "Hasbro Japan");
-            insertNewLicenseeCode(pstmt, "394D", "9M", "Jaguar");
-            insertNewLicenseeCode(pstmt, "394E", "9N", "Marvelous Entertainment");
-            insertNewLicenseeCode(pstmt, "4130", "A0", "Telenet");
-            insertNewLicenseeCode(pstmt, "4131", "A1", "Hori");
-            insertNewLicenseeCode(pstmt, "4134", "A4", "Konami");
-            insertNewLicenseeCode(pstmt, "4137", "A7", "Takara");
-            insertNewLicenseeCode(pstmt, "4139", "A9", "Technos Japan Corp.");
-            insertNewLicenseeCode(pstmt, "4144", "AD", "Toho");
-            insertNewLicenseeCode(pstmt, "4146", "AF", "Namco");
-            insertNewLicenseeCode(pstmt, "4148", "AH", "J-Wing");
-            insertNewLicenseeCode(pstmt, "414B", "AK", "KID");
-            insertNewLicenseeCode(pstmt, "414C", "AL", "MediaFactory");
-            insertNewLicenseeCode(pstmt, "414D", "AM", "BIOX Co., Ltd./GAPS Inc.");
-            insertNewLicenseeCode(pstmt, "414E", "AN", "Lay-Up");
-            insertNewLicenseeCode(pstmt, "4150", "AP", "Infogrames Hudson");
-            insertNewLicenseeCode(pstmt, "4151", "AQ", "Kiratto. Ludic Inc");
-            insertNewLicenseeCode(pstmt, "4230", "B0", "Acclaim Japan");
-            insertNewLicenseeCode(pstmt, "4231", "B1", "ASCII");
-            insertNewLicenseeCode(pstmt, "4232", "B2", "Bandai");
-            insertNewLicenseeCode(pstmt, "4234", "B4", "Enix");
-            insertNewLicenseeCode(pstmt, "4241", "BA", "Culture Brain");
-            insertNewLicenseeCode(pstmt, "4242", "BB", "Sunsoft");
-            insertNewLicenseeCode(pstmt, "4246", "BF", "Sammy");
-            insertNewLicenseeCode(pstmt, "4247", "BG", "Magical");
-            insertNewLicenseeCode(pstmt, "424A", "BJ", "Compile");
-            insertNewLicenseeCode(pstmt, "424C", "BL", "MTO");
-            insertNewLicenseeCode(pstmt, "424D", "BM", "XING Entertainment");
-            insertNewLicenseeCode(pstmt, "424E", "BN", "Sunrise Interactive");
-            insertNewLicenseeCode(pstmt, "4250", "BP", "Global A Entertainment");
-            insertNewLicenseeCode(pstmt, "4330", "C0", "Taito");
-            insertNewLicenseeCode(pstmt, "4336", "C6", "Tonkin House");
-            insertNewLicenseeCode(pstmt, "4338", "C8", "Koei");
-            insertNewLicenseeCode(pstmt, "4342", "CB", "Vapinc/NTVIC");
-            insertNewLicenseeCode(pstmt, "4345", "CE", "FCI/Pony Canyon");
-            insertNewLicenseeCode(pstmt, "4346", "CF", "Angel");
-            insertNewLicenseeCode(pstmt, "434A", "CJ", "BOSS Communication");
-            insertNewLicenseeCode(pstmt, "434B", "CK", "Axela");
-            insertNewLicenseeCode(pstmt, "434E", "CN", "NEC Interchannel");
-            insertNewLicenseeCode(pstmt, "4350", "CP", "Enterbrain");
-            insertNewLicenseeCode(pstmt, "4434", "D4", "Ask Kodansa");
-            insertNewLicenseeCode(pstmt, "4436", "D6", "Naxat");
-            insertNewLicenseeCode(pstmt, "4439", "D9", "Banpresto");
-            insertNewLicenseeCode(pstmt, "4441", "DA", "TOMY");
-            insertNewLicenseeCode(pstmt, "4444", "DD", "NCS");
-            insertNewLicenseeCode(pstmt, "4445", "DE", "Human Entertainment");
-            insertNewLicenseeCode(pstmt, "4446", "DF", "Altron Corporation");
-            insertNewLicenseeCode(pstmt, "4448", "DH", "Gaps Inc.");
-            insertNewLicenseeCode(pstmt, "444A", "DJ", "Epoch Co., Ltd.");
-            insertNewLicenseeCode(pstmt, "444B", "DK", "Kodansha");
-            insertNewLicenseeCode(pstmt, "444C", "DL", "Digital Kids");
-            insertNewLicenseeCode(pstmt, "444E", "DN", "ELF");
-            insertNewLicenseeCode(pstmt, "4450", "DP", "Prime System");
-            insertNewLicenseeCode(pstmt, "4532", "E2", "Yutaka");
-            insertNewLicenseeCode(pstmt, "4535", "E5", "Epoch");
-            insertNewLicenseeCode(pstmt, "4537", "E7", "Athena");
-            insertNewLicenseeCode(pstmt, "4538", "E8", "Asmik Ace Entertainment Inc.");
-            insertNewLicenseeCode(pstmt, "4539", "E9", "Natsume");
-            insertNewLicenseeCode(pstmt, "4541", "EA", "King Records");
-            insertNewLicenseeCode(pstmt, "4542", "EB", "Atlus");
-            insertNewLicenseeCode(pstmt, "454A", "EJ", "See old licensee code");
-            insertNewLicenseeCode(pstmt, "454C", "EL", "Spike");
-            insertNewLicenseeCode(pstmt, "454E", "EN", "Alphadream Corporation");
-            insertNewLicenseeCode(pstmt, "4550", "EP", "Sting Entertainment");
-            insertNewLicenseeCode(pstmt, "4551", "EQ", "Omega Project Co., Ltd.");
-            insertNewLicenseeCode(pstmt, "4642", "FB", "Psygnosis");
-            insertNewLicenseeCode(pstmt, "4647", "FG", "Jupiter Corporation");
-            insertNewLicenseeCode(pstmt, "5258", "RX", "Li Cheng");
-            insertNewLicenseeCode(pstmt, "5335", "S5", "SouthPeak Interactive");
-            insertNewLicenseeCode(pstmt, "5858", "XX", "Rocket Games");
+            insertNewLicenseeCode(pstmt, "00", "None");
+            insertNewLicenseeCode(pstmt, "01", "Nintendo");
+            insertNewLicenseeCode(pstmt, "02", "Rocket Games");
+            insertNewLicenseeCode(pstmt, "08", "Capcom");
+            insertNewLicenseeCode(pstmt, "09", "Hot B Co.");
+            insertNewLicenseeCode(pstmt, "0A", "Jaleco");
+            insertNewLicenseeCode(pstmt, "0B", "Coconuts Japan");
+            insertNewLicenseeCode(pstmt, "0C", "Coconuts Japan/G.X.Media");
+            insertNewLicenseeCode(pstmt, "0H", "Starfish");
+            insertNewLicenseeCode(pstmt, "0L", "Warashi Inc.");
+            insertNewLicenseeCode(pstmt, "0N", "Nowpro");
+            insertNewLicenseeCode(pstmt, "0P", "Game Village");
+            insertNewLicenseeCode(pstmt, "0Q", "IE Institute");
+            insertNewLicenseeCode(pstmt, "13", "Electronic Arts Japan");
+            insertNewLicenseeCode(pstmt, "18", "Hudson Soft Japan");
+            insertNewLicenseeCode(pstmt, "19", "B-AI");
+            insertNewLicenseeCode(pstmt, "1A", "Yonoman");
+            insertNewLicenseeCode(pstmt, "1H", "Yojigen");
+            insertNewLicenseeCode(pstmt, "1M", "Microcabin Corporation");
+            insertNewLicenseeCode(pstmt, "1N", "Dazz");
+            insertNewLicenseeCode(pstmt, "1P", "Creatures Inc.");
+            insertNewLicenseeCode(pstmt, "1Q", "TDK Deep Impresion");
+            insertNewLicenseeCode(pstmt, "20", "KSS");
+            insertNewLicenseeCode(pstmt, "22", "Planning Office WADA");
+            insertNewLicenseeCode(pstmt, "28", "Kemco Japan");
+            insertNewLicenseeCode(pstmt, "2D", "Visit");
+            insertNewLicenseeCode(pstmt, "2H", "Ubisoft Japan");
+            insertNewLicenseeCode(pstmt, "2K", "NEC InterChannel");
+            insertNewLicenseeCode(pstmt, "2L", "Tam");
+            insertNewLicenseeCode(pstmt, "2M", "Jordan");
+            insertNewLicenseeCode(pstmt, "2N", "Smilesoft");
+            insertNewLicenseeCode(pstmt, "2P", "The Pokémon Company");
+            insertNewLicenseeCode(pstmt, "30", "Viacom New Media");
+            insertNewLicenseeCode(pstmt, "34", "Magifact");
+            insertNewLicenseeCode(pstmt, "35", "Hect");
+            insertNewLicenseeCode(pstmt, "36", "Codemasters");
+            insertNewLicenseeCode(pstmt, "37", "GAGA Communications");
+            insertNewLicenseeCode(pstmt, "38", "Laguna");
+            insertNewLicenseeCode(pstmt, "39", "Telstar Fun and Games");
+            insertNewLicenseeCode(pstmt, "3:", "Nintendo/Mani");
+            insertNewLicenseeCode(pstmt, "3E", "Gremlin Graphics");
+            insertNewLicenseeCode(pstmt, "41", "Ubi Soft Entertainment");
+            insertNewLicenseeCode(pstmt, "42", "Sunsoft");
+            insertNewLicenseeCode(pstmt, "47", "Spectrum Holobyte");
+            insertNewLicenseeCode(pstmt, "4D", "Malibu Games");
+            insertNewLicenseeCode(pstmt, "4F", "Eidos/U.S. Gold");
+            insertNewLicenseeCode(pstmt, "4G", "Playmates Inc.");
+            insertNewLicenseeCode(pstmt, "4J", "Fox Interactive");
+            insertNewLicenseeCode(pstmt, "4K", "Time Warner Interactive");
+            insertNewLicenseeCode(pstmt, "4S", "Black Pearl");
+            insertNewLicenseeCode(pstmt, "4X", "GT Interactive");
+            insertNewLicenseeCode(pstmt, "4Y", "Rare");
+            insertNewLicenseeCode(pstmt, "4Z", "Crave Entertainment");
+            insertNewLicenseeCode(pstmt, "50", "Absolute Entertainment");
+            insertNewLicenseeCode(pstmt, "51", "Acclaim");
+            insertNewLicenseeCode(pstmt, "52", "Activision");
+            insertNewLicenseeCode(pstmt, "54", "Take 2 Interactive");
+            insertNewLicenseeCode(pstmt, "55", "Hi Tech Expressions");
+            insertNewLicenseeCode(pstmt, "56", "LJN");
+            insertNewLicenseeCode(pstmt, "58", "Mattel");
+            insertNewLicenseeCode(pstmt, "5A", "Mindscape/Red Orb Ent.");
+            insertNewLicenseeCode(pstmt, "5D", "Midway");
+            insertNewLicenseeCode(pstmt, "5F", "American Softworks");
+            insertNewLicenseeCode(pstmt, "5G", "Majesco Sales Inc");
+            insertNewLicenseeCode(pstmt, "5H", "3DO");
+            insertNewLicenseeCode(pstmt, "5K", "Hasbro");
+            insertNewLicenseeCode(pstmt, "5L", "NewKidCo");
+            insertNewLicenseeCode(pstmt, "5M", "Telegames");
+            insertNewLicenseeCode(pstmt, "5N", "Metro3D");
+            insertNewLicenseeCode(pstmt, "5P", "Vatical Entertainment");
+            insertNewLicenseeCode(pstmt, "5Q", "LEGO Media");
+            insertNewLicenseeCode(pstmt, "5T", "Cryo Interactive");
+            insertNewLicenseeCode(pstmt, "5V", "Agetec Inc.");
+            insertNewLicenseeCode(pstmt, "5W", "Red Storm Ent./BKN Ent.");
+            insertNewLicenseeCode(pstmt, "5X", "Microids");
+            insertNewLicenseeCode(pstmt, "5Z", "Conspiracy Entertainment Corp.");
+            insertNewLicenseeCode(pstmt, "60", "Titus Interactive Studios");
+            insertNewLicenseeCode(pstmt, "61", "Virgin Interactive");
+            insertNewLicenseeCode(pstmt, "64", "LucasArts Entertainment");
+            insertNewLicenseeCode(pstmt, "67", "Ocean");
+            insertNewLicenseeCode(pstmt, "69", "Electronic Arts");
+            insertNewLicenseeCode(pstmt, "6F", "Electro Brain");
+            insertNewLicenseeCode(pstmt, "6G", "The Learning Company");
+            insertNewLicenseeCode(pstmt, "6H", "BBC");
+            insertNewLicenseeCode(pstmt, "6J", "Software 2000");
+            insertNewLicenseeCode(pstmt, "6L", "BAM! Entertainment");
+            insertNewLicenseeCode(pstmt, "6M", "Studio 3");
+            insertNewLicenseeCode(pstmt, "6P", "Ravensburger Interactive Media GmbH");
+            insertNewLicenseeCode(pstmt, "6Q", "Classified Games");
+            insertNewLicenseeCode(pstmt, "6R", "Sound Source Interactive");
+            insertNewLicenseeCode(pstmt, "6S", "TDK Mediactive");
+            insertNewLicenseeCode(pstmt, "6T", "Interactive Imagination");
+            insertNewLicenseeCode(pstmt, "6U", "DreamCatcher");
+            insertNewLicenseeCode(pstmt, "6V", "JoWood Productions");
+            insertNewLicenseeCode(pstmt, "6X", "Wannado Edition");
+            insertNewLicenseeCode(pstmt, "6Y", "LSP");
+            insertNewLicenseeCode(pstmt, "6Z", "ITE Media");
+            insertNewLicenseeCode(pstmt, "70", "Infogrames");
+            insertNewLicenseeCode(pstmt, "71", "Interplay");
+            insertNewLicenseeCode(pstmt, "72", "JVC Musical Industries Inc");
+            insertNewLicenseeCode(pstmt, "75", "SCI");
+            insertNewLicenseeCode(pstmt, "78", "THQ");
+            insertNewLicenseeCode(pstmt, "79", "Accolade");
+            insertNewLicenseeCode(pstmt, "7D", "Universal Interactive Studios");
+            insertNewLicenseeCode(pstmt, "7F", "Kemco");
+            insertNewLicenseeCode(pstmt, "7G", "Rage Software");
+            insertNewLicenseeCode(pstmt, "7H", "Encore");
+            insertNewLicenseeCode(pstmt, "7K", "BVM");
+            insertNewLicenseeCode(pstmt, "7L", "Simon & Schuster Interactive");
+            insertNewLicenseeCode(pstmt, "87", "Tsukuda Original");
+            insertNewLicenseeCode(pstmt, "8B", "Bulletproof Software");
+            insertNewLicenseeCode(pstmt, "8C", "Vic Tokai Inc.");
+            insertNewLicenseeCode(pstmt, "8F", "I\"Max");
+            insertNewLicenseeCode(pstmt, "8J", "General Entertainment");
+            insertNewLicenseeCode(pstmt, "8K", "Japan System Supply");
+            insertNewLicenseeCode(pstmt, "8M", "CyberFront");
+            insertNewLicenseeCode(pstmt, "8N", "Success");
+            insertNewLicenseeCode(pstmt, "8P", "SEGA Japan");
+            insertNewLicenseeCode(pstmt, "91", "Chun Soft");
+            insertNewLicenseeCode(pstmt, "92", "Video System");
+            insertNewLicenseeCode(pstmt, "93", "BEC");
+            insertNewLicenseeCode(pstmt, "99", "Victor Interactive Software");
+            insertNewLicenseeCode(pstmt, "9A", "Nichibutsu/Nihon Bussan");
+            insertNewLicenseeCode(pstmt, "9B", "Tecmo");
+            insertNewLicenseeCode(pstmt, "9C", "Imagineer");
+            insertNewLicenseeCode(pstmt, "9H", "Bottom Up");
+            insertNewLicenseeCode(pstmt, "9K", "Syscom");
+            insertNewLicenseeCode(pstmt, "9L", "Hasbro Japan");
+            insertNewLicenseeCode(pstmt, "9M", "Jaguar");
+            insertNewLicenseeCode(pstmt, "9N", "Marvelous Entertainment");
+            insertNewLicenseeCode(pstmt, "A0", "Telenet");
+            insertNewLicenseeCode(pstmt, "A1", "Hori");
+            insertNewLicenseeCode(pstmt, "A4", "Konami");
+            insertNewLicenseeCode(pstmt, "A7", "Takara");
+            insertNewLicenseeCode(pstmt, "A9", "Technos Japan Corp.");
+            insertNewLicenseeCode(pstmt, "AD", "Toho");
+            insertNewLicenseeCode(pstmt, "AF", "Namco");
+            insertNewLicenseeCode(pstmt, "AH", "J-Wing");
+            insertNewLicenseeCode(pstmt, "AK", "KID");
+            insertNewLicenseeCode(pstmt, "AL", "MediaFactory");
+            insertNewLicenseeCode(pstmt, "AM", "BIOX Co., Ltd./GAPS Inc.");
+            insertNewLicenseeCode(pstmt, "AN", "Lay-Up");
+            insertNewLicenseeCode(pstmt, "AP", "Infogrames Hudson");
+            insertNewLicenseeCode(pstmt, "AQ", "Kiratto. Ludic Inc");
+            insertNewLicenseeCode(pstmt, "B0", "Acclaim Japan");
+            insertNewLicenseeCode(pstmt, "B1", "ASCII");
+            insertNewLicenseeCode(pstmt, "B2", "Bandai");
+            insertNewLicenseeCode(pstmt, "B4", "Enix");
+            insertNewLicenseeCode(pstmt, "BA", "Culture Brain");
+            insertNewLicenseeCode(pstmt, "BB", "Sunsoft");
+            insertNewLicenseeCode(pstmt, "BF", "Sammy");
+            insertNewLicenseeCode(pstmt, "BG", "Magical");
+            insertNewLicenseeCode(pstmt, "BJ", "Compile");
+            insertNewLicenseeCode(pstmt, "BL", "MTO");
+            insertNewLicenseeCode(pstmt, "BM", "XING Entertainment");
+            insertNewLicenseeCode(pstmt, "BN", "Sunrise Interactive");
+            insertNewLicenseeCode(pstmt, "BP", "Global A Entertainment");
+            insertNewLicenseeCode(pstmt, "C0", "Taito");
+            insertNewLicenseeCode(pstmt, "C6", "Tonkin House");
+            insertNewLicenseeCode(pstmt, "C8", "Koei");
+            insertNewLicenseeCode(pstmt, "CB", "Vapinc/NTVIC");
+            insertNewLicenseeCode(pstmt, "CE", "FCI/Pony Canyon");
+            insertNewLicenseeCode(pstmt, "CF", "Angel");
+            insertNewLicenseeCode(pstmt, "CJ", "BOSS Communication");
+            insertNewLicenseeCode(pstmt, "CK", "Axela");
+            insertNewLicenseeCode(pstmt, "CN", "NEC Interchannel");
+            insertNewLicenseeCode(pstmt, "CP", "Enterbrain");
+            insertNewLicenseeCode(pstmt, "D4", "Ask Kodansa");
+            insertNewLicenseeCode(pstmt, "D6", "Naxat");
+            insertNewLicenseeCode(pstmt, "D9", "Banpresto");
+            insertNewLicenseeCode(pstmt, "DA", "TOMY");
+            insertNewLicenseeCode(pstmt, "DD", "NCS");
+            insertNewLicenseeCode(pstmt, "DE", "Human Entertainment");
+            insertNewLicenseeCode(pstmt, "DF", "Altron Corporation");
+            insertNewLicenseeCode(pstmt, "DH", "Gaps Inc.");
+            insertNewLicenseeCode(pstmt, "DJ", "Epoch Co., Ltd.");
+            insertNewLicenseeCode(pstmt, "DK", "Kodansha");
+            insertNewLicenseeCode(pstmt, "DL", "Digital Kids");
+            insertNewLicenseeCode(pstmt, "DN", "ELF");
+            insertNewLicenseeCode(pstmt, "DP", "Prime System");
+            insertNewLicenseeCode(pstmt, "E2", "Yutaka");
+            insertNewLicenseeCode(pstmt, "E5", "Epoch");
+            insertNewLicenseeCode(pstmt, "E7", "Athena");
+            insertNewLicenseeCode(pstmt, "E8", "Asmik Ace Entertainment Inc.");
+            insertNewLicenseeCode(pstmt, "E9", "Natsume");
+            insertNewLicenseeCode(pstmt, "EA", "King Records");
+            insertNewLicenseeCode(pstmt, "EB", "Atlus");
+            insertNewLicenseeCode(pstmt, "EJ", "See old licensee code");
+            insertNewLicenseeCode(pstmt, "EL", "Spike");
+            insertNewLicenseeCode(pstmt, "EN", "Alphadream Corporation");
+            insertNewLicenseeCode(pstmt, "EP", "Sting Entertainment");
+            insertNewLicenseeCode(pstmt, "EQ", "Omega Project Co., Ltd.");
+            insertNewLicenseeCode(pstmt, "FB", "Psygnosis");
+            insertNewLicenseeCode(pstmt, "FG", "Jupiter Corporation");
+            insertNewLicenseeCode(pstmt, "RX", "Li Cheng");
+            insertNewLicenseeCode(pstmt, "S5", "SouthPeak Interactive");
+            insertNewLicenseeCode(pstmt, "XX", "Rocket Games");
         }
     }
 
     /**
-     * Helper method to insert Old Licensee Code as binary.
+     * Helper method to insert Old Licensee Code data into the database.
+     * Converts hex string to binary data for storage.
      *
-     * @param pstmt
-     * @param hex
-     * @param publisher
-     * @throws SQLException
+     * @param pstmt prepared statement for insertion
+     * @param hex licensee code in hex format
+     * @param publisher the publisher name
+     * @throws SQLException if insertion fails
      */
     private void insertOldLicenseeCode(PreparedStatement pstmt, String hex, String publisher) throws SQLException {
         pstmt.setBytes(1, HexFormat.of().parseHex(hex));
@@ -553,7 +624,14 @@ public class DatabaseManager {
         pstmt.executeUpdate();
     }
 
-    private void populateOldLicenseeCode(Statement stmt) throws SQLException {
+    /**
+     * Populates the OldLicenseeCode table with publisher information.
+     * Used for ROMs with 1-byte licensee codes.
+     * Each entry includes Licensee Code in hex and publisher name.
+     *
+     * @throws SQLException if population fails
+     */
+    private void populateOldLicenseeCode() throws SQLException {
         // Add Old Licensee Codes
         String insertQuery = "INSERT INTO OldLicenseeCode (licensee_code, publisher) VALUES (?, ?)";
         try (PreparedStatement pstmt = conn.prepareStatement(insertQuery)) {
