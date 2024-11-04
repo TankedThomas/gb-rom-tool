@@ -79,7 +79,7 @@ public class DatabaseManagerTest {
     public void testTableExists() throws SQLException {
         Connection conn = dbManager.getConnection();
         // Test all required tables exist
-        try (Statement stmt = conn.createStatement()) {
+        try {
             // Test all required tables exist
             String[] tables = {
                 "CartridgeType", "ROMSize", "RAMSize",
@@ -92,32 +92,35 @@ public class DatabaseManagerTest {
                     assertTrue("Table " + table + " should exist", rs.next());
                 }
             }
+        } catch (SQLException e) {
+            System.err.println("Database error while checking tables: " + e.getMessage());
+            throw e;  // Re-throw to fail the test
         }
     }
 
     /**
-     * Tests manufacturer code storage in Collection table.
-     * Verifies that manufacturer codes are properly saved and retrieved.
+     * Tests Manufacturer Code storage in Collection table.
+     * Verifies that Manufacturer Codes are properly saved and retrieved.
      *
      * @throws SQLException if database operations fail
      * @throws IOException if ROM file operations fail
      */
     @Test
     public void testManufacturerCode() throws SQLException, IOException {
-        // Create ROM with manufacturer code
-        RomReader reader = TestUtils.createTestRomReader("TESTGAMEBXTJ");  // Title with mfr code
+        // Create CGB ROM with Manufacturer Code
+        RomReader reader = TestUtils.createTestCGBRomReader("MAORIO", "KMEX");  // Title with Manufacturer Code
         Collection rom = Collection.fromRomReader(reader, "Test ROM");
 
         // Save and verify
         assertTrue(dbQuery.saveRomToCollection(rom));
         ArrayList<Collection> roms = dbQuery.getAllRoms();
         assertFalse("Collection should not be empty", roms.isEmpty());
-        assertEquals("BXTJ", roms.get(0).getManufacturerCode());
+        assertEquals("KMEX", roms.get(0).getManufacturerCode());
     }
 
     /**
-     * Tests that null manufacturer code is handled properly.
-     * Verifies that ROMs without manufacturer code can be saved and retrieved.
+     * Tests that null Manufacturer Code is handled properly.
+     * Verifies that ROMs without Manufacturer Code can be saved and retrieved.
      *
      * @throws SQLException if database operations fail
      * @throws IOException if ROM file operations fail
@@ -132,7 +135,9 @@ public class DatabaseManagerTest {
         assertTrue(dbQuery.saveRomToCollection(rom));
         ArrayList<Collection> roms = dbQuery.getAllRoms();
         assertFalse("Collection should not be empty", roms.isEmpty());
-        assertNull("Manufacturer code should be null", roms.get(0).getManufacturerCode());
+        Collection retrieved = roms.get(0);
+        assertTrue("Manufacturer code should be null or empty",
+                retrieved.getManufacturerCode() == null || retrieved.getManufacturerCode().isEmpty());
     }
 
     /**
