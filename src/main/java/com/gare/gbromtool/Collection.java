@@ -36,6 +36,7 @@ public class Collection {
      *
      * @param name User-provided name for the ROM
      * @param title ROM title
+     * @param manufacturerCode ROM manufacturer code
      * @param typeCode Cartridge type code
      * @param romRev ROM revision number
      * @param romSizeCode ROM size code
