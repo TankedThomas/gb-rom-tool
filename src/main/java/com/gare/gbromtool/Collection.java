@@ -19,6 +19,7 @@ public class Collection {
     // Fields matching database columns
     private final String title;
     private final String name;
+    private final String manufacturerCode;
     private final byte[] typeCode;
     private final byte[] romRev;
     private final int romSizeCode;
@@ -50,6 +51,7 @@ public class Collection {
     public Collection(
             String name,
             String title,
+            String manufacturerCode,
             byte[] typeCode,
             byte[] romRev,
             int romSizeCode,
@@ -75,6 +77,7 @@ public class Collection {
 
         this.name = name;
         this.title = title;
+        this.manufacturerCode = manufacturerCode;
         this.typeCode = typeCode.clone();
         this.romRev = romRev.clone();
         this.romSizeCode = romSizeCode;
@@ -100,6 +103,13 @@ public class Collection {
      */
     public String getTitle() {
         return title;
+    }
+
+    /**
+     * @return The manufacturer code extracted from the ROM header, if it exists
+     */
+    public String getManufacturerCode() {
+        return manufacturerCode;
     }
 
     /**
@@ -187,6 +197,7 @@ public class Collection {
         return new Collection(
                 name,
                 titleInfo.getTitle(),
+                titleInfo.getManufacturerCode(),
                 reader.getCartridgeType().getBytes(),
                 reader.getMaskVersion(),
                 reader.getROMSize(),

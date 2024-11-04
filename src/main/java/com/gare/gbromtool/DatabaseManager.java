@@ -220,6 +220,7 @@ public class DatabaseManager {
                 stmt.executeUpdate("CREATE TABLE Collection ("
                         + "title VARCHAR(100),"
                         + "name VARCHAR(200),"
+                        + "mft_code VARCHAR(4),"
                         + "type_code CHAR(2) FOR BIT DATA,"
                         + "rom_rev CHAR(2) FOR BIT DATA,"
                         + "rom_size_code INT,"

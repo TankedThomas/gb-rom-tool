@@ -156,25 +156,26 @@ public class DatabaseQuery {
     public boolean saveRomToCollection(Collection rom) throws SQLException {
         String sql = """
                     INSERT INTO Collection (
-                        title, name, type_code, rom_rev, rom_size_code,
-                        ram_size_code, sgb_flag, cgb_flag, dest_code,
-                        licensee_code, head_chksm, global_chksm
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        title, name, mft_code, type_code, rom_rev, 
+                        rom_size_code, ram_size_code, sgb_flag, cgb_flag, 
+                        dest_code, licensee_code, head_chksm, global_chksm
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """;
 
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, rom.getTitle());
             stmt.setString(2, rom.getName());
-            stmt.setBytes(3, rom.getTypeCode());
-            stmt.setBytes(4, rom.getRomRev());
-            stmt.setInt(5, rom.getRomSizeCode());
-            stmt.setInt(6, rom.getRamSizeCode());
-            stmt.setBoolean(7, rom.getSgbFlag());
-            stmt.setBytes(8, rom.getCgbFlag());
-            stmt.setInt(9, rom.getDestCode());
-            stmt.setBytes(10, rom.getLicenseeCode());
-            stmt.setBytes(11, rom.getHeaderChecksum());
-            stmt.setBytes(12, rom.getGlobalChecksum());
+            stmt.setString(3, rom.getManufacturerCode());
+            stmt.setBytes(4, rom.getTypeCode());
+            stmt.setBytes(5, rom.getRomRev());
+            stmt.setInt(6, rom.getRomSizeCode());
+            stmt.setInt(7, rom.getRamSizeCode());
+            stmt.setBoolean(8, rom.getSgbFlag());
+            stmt.setBytes(9, rom.getCgbFlag());
+            stmt.setInt(10, rom.getDestCode());
+            stmt.setBytes(11, rom.getLicenseeCode());
+            stmt.setBytes(12, rom.getHeaderChecksum());
+            stmt.setBytes(13, rom.getGlobalChecksum());
 
             int rowsAffected = stmt.executeUpdate();
             return rowsAffected > 0;
@@ -219,25 +220,26 @@ public class DatabaseQuery {
     public boolean updateRomInCollection(Collection rom) throws SQLException {
         String sql = """
                     UPDATE Collection 
-                    SET name = ?, type_code = ?, rom_size_code = ?, 
-                        ram_size_code = ?, sgb_flag = ?, cgb_flag = ?, 
-                        dest_code = ?, licensee_code = ?, head_chksm = ?
+                    SET name = ?, mft_code = ?, type_code = ?, 
+                     rom_size_code = ?, ram_size_code = ?, sgb_flag = ?, 
+                     cgb_flag = ?, dest_code = ?, licensee_code = ?, head_chksm = ?
                     WHERE title = ? AND rom_rev = ? AND global_chksm = ?
                     """;
 
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, rom.getName());
-            stmt.setBytes(2, rom.getTypeCode());
-            stmt.setInt(3, rom.getRomSizeCode());
-            stmt.setInt(4, rom.getRamSizeCode());
-            stmt.setBoolean(5, rom.getSgbFlag());
-            stmt.setBytes(6, rom.getCgbFlag());
-            stmt.setInt(7, rom.getDestCode());
-            stmt.setBytes(8, rom.getLicenseeCode());
-            stmt.setBytes(9, rom.getHeaderChecksum());
-            stmt.setString(10, rom.getTitle());
-            stmt.setBytes(11, rom.getRomRev());
-            stmt.setBytes(12, rom.getGlobalChecksum());
+            stmt.setString(2, rom.getManufacturerCode());
+            stmt.setBytes(3, rom.getTypeCode());
+            stmt.setInt(4, rom.getRomSizeCode());
+            stmt.setInt(5, rom.getRamSizeCode());
+            stmt.setBoolean(6, rom.getSgbFlag());
+            stmt.setBytes(7, rom.getCgbFlag());
+            stmt.setInt(8, rom.getDestCode());
+            stmt.setBytes(9, rom.getLicenseeCode());
+            stmt.setBytes(10, rom.getHeaderChecksum());
+            stmt.setString(11, rom.getTitle());
+            stmt.setBytes(12, rom.getRomRev());
+            stmt.setBytes(13, rom.getGlobalChecksum());
 
             int rowsAffected = stmt.executeUpdate();
             return rowsAffected > 0;
@@ -264,6 +266,7 @@ public class DatabaseQuery {
                 Collection rom = new Collection(
                         rs.getString("name"),
                         rs.getString("title"),
+                        rs.getString("mft_code"),
                         rs.getBytes("type_code"),
                         rs.getBytes("rom_rev"),
                         rs.getInt("rom_size_code"),
