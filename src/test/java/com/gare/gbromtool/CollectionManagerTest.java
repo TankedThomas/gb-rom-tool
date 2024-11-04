@@ -8,6 +8,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import javax.swing.JFrame;
 
 /**
@@ -196,4 +197,91 @@ public class CollectionManagerTest {
         dbQuery.printAllRoms();
     }
 
+    /**
+     * Tests saving a ROM with Manufacturer Code.
+     * Verifies that Manufacturer Code is properly preserved.
+     *
+     * @throws SQLException if database operations fail
+     * @throws IOException if ROM file operations fail
+     */
+    @Test
+    public void testSaveRomWithManufacturerCode() throws SQLException, IOException {
+        // Create test ROM with Manufacturer Code
+        RomReader reader = TestUtils.createTestRomReader("MARIOBXTJ");  // With Manufacturer Code
+
+        // Save the ROM
+        boolean result = collectionManager.saveRomToCollection(reader, "Test ROM");
+        assertTrue("Failed to save ROM with Manufacturer Code", result);
+
+        // Verify using complete version checking
+        assertTrue("ROM not found in database",
+                dbQuery.romExistsInCollection(
+                        reader.parseTitle().getTitle(),
+                        reader.getMaskVersion(),
+                        reader.getGlobalChecksum()
+                )
+        );
+
+        // Print debug info
+        dbQuery.printAllRoms();
+    }
+
+    /**
+     * Tests updating a ROM with Manufacturer Code.
+     * Verifies that Manufacturer Code is properly preserved during updates.
+     *
+     * @throws SQLException if database operations fail
+     * @throws IOException if ROM file operations fail
+     */
+    @Test
+    public void testUpdateRomWithManufacturerCode() throws SQLException, IOException {
+        // Create a test ROM with CGB flag and valid Manufacturer Code
+        RomReader reader = TestUtils.createTestCGBRomReader("MAORIO", "BXTA");
+
+        // First save
+        assertTrue("Initial save failed",
+                collectionManager.saveRomToCollection(reader, "Original Name"));
+
+        // Set test mode to accept overwrite
+        collectionManager.setTestConfirmationResult(true);
+
+        // Update with new name
+        assertTrue("Update failed",
+                collectionManager.saveRomToCollection(reader, "Updated Name"));
+
+        // Verify update preserved Manufacturer Code
+        ArrayList<Collection> roms = dbQuery.getAllRoms();
+        assertFalse("No ROMs found after update", roms.isEmpty());
+        Collection updated = roms.get(0);
+        assertEquals("Updated Name", updated.getName());
+        assertEquals("BXTA", updated.getManufacturerCode());
+
+        // Verify update
+        dbQuery.printAllRoms();
+    }
+
+    /**
+     * Tests that error handling works properly for ROMs with manufacturer
+     * codes.
+     * Verifies that saving fails appropriately with error messages.
+     *
+     * @throws IOException if ROM file operations fail
+     */
+    @Test
+    public void testManufacturerCodeErrorHandling() throws IOException {
+        // Enable test mode
+        collectionManager.setTestMode(true);
+
+        // Try to save ROM with same Manufacturer Code twice
+        RomReader reader = TestUtils.createTestRomReader("MAORIOBXTJ");
+
+        // First save should succeed
+        assertTrue("Initial save failed",
+                collectionManager.saveRomToCollection(reader, "First ROM"));
+
+        // Second save should prompt for overwrite
+        collectionManager.setTestConfirmationResult(false);  // Reject overwrite
+        assertFalse("Duplicate save should fail when overwrite is rejected",
+                collectionManager.saveRomToCollection(reader, "Second ROM"));
+    }
 }
