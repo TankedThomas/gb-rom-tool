@@ -66,7 +66,6 @@ public class CollectionManager {
                 boolean success = dbQuery.updateRomInCollection(rom);
                 if (success) {
                     showSuccess("ROM information updated successfully.");
-                    dbQuery.printAllRoms(); // For debugging
                     return true;
                 } else {
                     showError("Failed to update ROM information.", "Update Failed", JOptionPane.ERROR_MESSAGE);
@@ -78,7 +77,6 @@ public class CollectionManager {
             boolean success = dbQuery.saveRomToCollection(rom);
             if (success) {
                 showSuccess("ROM information saved successfully.");
-                dbQuery.printAllRoms(); // For debugging
                 return true;
             } else {
                 showError("Failed to save ROM information.", "Save Failed", JOptionPane.ERROR_MESSAGE);
