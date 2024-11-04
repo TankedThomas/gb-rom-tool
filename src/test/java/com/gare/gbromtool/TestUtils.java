@@ -21,8 +21,8 @@ public final class TestUtils {
     /**
      * Creates a test ROM file with minimal valid data.
      *
-     * @param title The title to embed in the ROM header
-     * @return A RomReader instance for the test ROM
+     * @param title the title to embed in the ROM header
+     * @return a RomReader instance for the test ROM
      * @throws IOException if file operations fail
      */
     public static RomReader createTestRomReader(String title) throws IOException {
@@ -59,11 +59,34 @@ public final class TestUtils {
     }
 
     /**
+     * Creates a test ROM file with CGB compatibility and Manufacturer Code.
+     * Sets the CGB flag and adds a valid Manufacturer Code to the title.
+     *
+     * @param baseTitle the base title without Manufacturer Code
+     * @param manufacturerCode the 4-character Manufacturer Code to append
+     * @return a RomReader instance for the test ROM
+     * @throws IOException if file operations fail
+     */
+    public static RomReader createTestCGBRomReader(String baseTitle, String manufacturerCode) throws IOException {
+        byte[] romData = new byte[0x150];
+        System.arraycopy(RomSpecification.BOOT_LOGO, 0, romData, 0x104, RomSpecification.BOOT_LOGO.length);
+
+        // Set CGB flag
+        romData[0x143] = (byte) 0x80;
+
+        // Pad the base Title with spaces and add Manufacturer Code
+        String paddedTitle = String.format("%-11s%4s", baseTitle, manufacturerCode);
+        System.arraycopy(paddedTitle.getBytes(), 0, romData, 0x134, Math.min(paddedTitle.length(), 15));
+
+        return new RomReader(createTestRom(romData));
+    }
+
+    /**
      * Creates a byte array of specified size filled with test data.
      *
-     * @param size The size of the array to create
-     * @param value The value to fill the array with
-     * @return A new byte array filled with the specified value
+     * @param size the size of the array to create
+     * @param value the value to fill the array with
+     * @return a new byte array filled with the specified value
      */
     public static byte[] createTestBytes(int size, byte value) {
         byte[] result = new byte[size];
@@ -75,8 +98,8 @@ public final class TestUtils {
      * Creates a test ROM file with custom data.
      * Used for testing specific ROM configurations.
      *
-     * @param data The complete ROM data to write
-     * @return A temporary file containing the ROM data
+     * @param data the complete ROM data to write
+     * @return a temporary file containing the ROM data
      * @throws IOException if file operations fail
      */
     public static File createTestRom(byte[] data) throws IOException {
