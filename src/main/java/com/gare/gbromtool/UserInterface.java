@@ -65,9 +65,9 @@ public class UserInterface {
 
         // Top panel for button
         JPanel topPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
-        loadFileButton = new JButton("Load ROM from File...");
-        selectFileButton = new JButton("Load ROM from Database");
-        saveFileButton = new JButton("Save ROM to Database");
+        loadFileButton = new JButton("Load from File...");
+        selectFileButton = new JButton("Load from Database...");
+        saveFileButton = new JButton("Save to Database...");
 
         topPanel.add(loadFileButton);
         topPanel.add(selectFileButton);
@@ -86,18 +86,15 @@ public class UserInterface {
         loadFileButton.addActionListener((ActionEvent e) -> {
             handleFileSelection();
         });
+
         selectFileButton.addActionListener((ActionEvent e) -> {
-            // TODO: Load selection from list of ROMs currently in Collection table of database
+            handleDatabaseSelection();
         });
+
         saveFileButton.addActionListener((ActionEvent e) -> {
-            String defaultName = fileHandler.getCurrentFileName().replaceFirst("[.][^.]+$", "");
-            collectionManager.saveRomToCollection(fileHandler.getCurrentRomReader(), defaultName);
-            try {
-                dbQuery.printAllRoms();
-            } catch (SQLException ex) {
-                Logger.getLogger(UserInterface.class.getName()).log(Level.SEVERE, null, ex);
-            }
+            handleFileSave();
         });
+
     }
 
     private void initialiseInfoPanel() {
@@ -166,6 +163,13 @@ public class UserInterface {
         valueConstraints.gridy = y;
         valueConstraints.fill = GridBagConstraints.HORIZONTAL; // Make values fill space
 
+        // Make filename value span both columns
+        if (fieldName.equals(FILE_NAME)) {
+            valueConstraints.gridwidth = 3;  // Span across both columns
+        } else {
+            valueConstraints.gridwidth = 1;  // Default width
+        }
+
         // Label-value pairs
         JLabel label = new JLabel(fieldName + ":", JLabel.RIGHT); // Right-align labels
         JLabel value = new JLabel("", JLabel.LEFT); // Left-align values
@@ -194,7 +198,15 @@ public class UserInterface {
                     ? "CGB-" + titleInfo.getManufacturerCode() : "");
 
             // Filename
-            valueLabels.get(FILE_NAME).setText(fileHandler.getCurrentFileName());
+            if (reader.getLoadFromDatabase()) {
+                String dbName = reader.getDatabaseName();
+                System.out.println("File name retrieved from database: '" + dbName + "'");
+                valueLabels.get(FILE_NAME).setText(dbName);
+            } else {
+                String fileName = fileHandler.getCurrentFileName();
+                System.out.println("File name retrieved from file: '" + fileName + "'");
+                valueLabels.get(FILE_NAME).setText(fileName);
+            }
 
             // Revision and Publisher
             valueLabels.get(REVISION).setText(formatHexByte(reader.getMaskVersion()));
@@ -228,7 +240,7 @@ public class UserInterface {
                 valueLabels.get(BOOT_LOGO).setForeground(new Color(0, 150, 0));
             } else {
                 valueLabels.get(BOOT_LOGO).setForeground(new Color(150, 0, 0));
-            };
+            }
 
         } catch (SQLException ex) {
             System.err.println("Database error: " + ex.getMessage());
@@ -292,6 +304,30 @@ public class UserInterface {
                         JOptionPane.ERROR_MESSAGE);
             }
         }
+    }
+
+    /**
+     * Handles loading a ROM from the database through the selection dialog.
+     */
+    private void handleDatabaseSelection() {
+        RomSelectionDialog dialog = new RomSelectionDialog(mainFrame, dbQuery);
+        Collection selectedRom = dialog.showDialog();
+
+        if (selectedRom != null) {
+            System.out.println("Selected ROM name: '" + selectedRom.getName() + "'"); // Debug
+            // Create RomReader from Collection table in database
+            RomReader dbReader = new RomReader(selectedRom);
+            System.out.println("Created reader with database name: '" + dbReader.getDatabaseName() + "'"); // Debug
+
+            // Update display
+            clearValues();
+            updateValues(dbReader);
+        }
+    }
+
+    private void handleFileSave() {
+        String defaultName = fileHandler.getCurrentFileName().replaceFirst("[.][^.]+$", "");
+        collectionManager.saveRomToCollection(fileHandler.getCurrentRomReader(), defaultName);
     }
 
     public void show() {
