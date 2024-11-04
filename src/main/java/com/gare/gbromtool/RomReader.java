@@ -18,6 +18,7 @@ public class RomReader {
     private final RomChecksum checksum;
     byte CGBFlag[];
     private final boolean loadFromDatabase;
+    private String databaseName;
 
     /**
      * Constructs a RomReader from a ROM file.
@@ -48,7 +49,7 @@ public class RomReader {
         if (!loadFromDatabase && this.romData.length < 0x150) {
             throw new IOException("File is too small to be a valid Game Boy ROM");
         }
-        this.checksum = new RomChecksum(this.romData);
+        this.checksum = new RomChecksum(this.romData, this);
     }
 
     /**
@@ -59,6 +60,7 @@ public class RomReader {
      */
     public RomReader(Collection rom) {
         this.loadFromDatabase = true;
+        this.databaseName = rom.getName();
 
         // Create minimal ROM data structure
         byte[] minData = new byte[0x150];
@@ -101,7 +103,15 @@ public class RomReader {
         System.arraycopy(rom.getGlobalChecksum(), 0, minData, 0x14E, 2);
 
         this.romData = minData;
-        this.checksum = new RomChecksum(this.romData);
+        this.checksum = new RomChecksum(this.romData, this);
+    }
+
+    public boolean getLoadFromDatabase() {
+        return loadFromDatabase;
+    }
+
+    public String getDatabaseName() {
+        return databaseName;
     }
 
     /**
@@ -127,7 +137,6 @@ public class RomReader {
         byte[] checkLogo = RomSpecification.BOOT_LOGO;
 
         System.out.println("Extracted logo bytes: " + HexFormat.of().formatHex(logo));
-        System.out.println("Expected logo bytes: " + HexFormat.of().formatHex(checkLogo));
 
         // Compare bytes at 0x104 - 0x133 to expected Logo
         return Arrays.equals(logo, checkLogo);
