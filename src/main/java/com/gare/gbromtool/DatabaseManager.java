@@ -1,6 +1,7 @@
 package com.gare.gbromtool;
 
 import java.io.File;
+import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.DriverManager;
@@ -326,7 +327,7 @@ public class DatabaseManager {
      * @throws SQLException
      */
     private void insertNewLicenseeCode(PreparedStatement pstmt, String hex, String ascii, String publisher) throws SQLException {
-        pstmt.setBytes(1, HexFormat.of().parseHex(hex));
+        pstmt.setBytes(1, ascii.getBytes(StandardCharsets.US_ASCII));
         pstmt.setString(2, ascii);
         pstmt.setString(3, publisher);
         pstmt.executeUpdate();
