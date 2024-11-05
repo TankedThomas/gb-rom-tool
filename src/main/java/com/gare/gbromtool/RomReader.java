@@ -102,14 +102,17 @@ public class RomReader {
         minData[0x149] = (byte) rom.getRamSizeCode();
         minData[0x14A] = (byte) rom.getDestCode();
 
-        // Handle licensee code directly from database
+        // Handle Licensee Code directly from database
         byte[] licenseeCode = rom.getLicenseeCode();
         if (licenseeCode.length == 2) {
-            // New format - set Old Licensee Code to 0x33 and copy new code to correct position
+            // Using New Licensee Code
+            // Set Old Licensee Code to 0x33
+            // Copy New Licensee Code to correct position
             minData[0x14B] = 0x33;
             System.arraycopy(licenseeCode, 0, minData, 0x144, 2);
         } else {
-            // Old format - copy directly to old position
+            // Using Old Licensee Code
+            // Copy directly to old position
             System.arraycopy(licenseeCode, 0, minData, 0x14B, 1);
         }
 
