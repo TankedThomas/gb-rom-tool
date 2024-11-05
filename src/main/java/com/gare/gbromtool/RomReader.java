@@ -18,6 +18,9 @@ public class RomReader {
     private final byte[] romData;
     private final RomChecksum checksum;
     byte CGBFlag[];
+    private final boolean headerChecksumValid;
+    private final boolean globalChecksumValid;
+    private final boolean bootLogoValid;
     private final boolean loadFromDatabase;
     private String databaseName;
 
@@ -51,6 +54,14 @@ public class RomReader {
             throw new IOException("File is too small to be a valid Game Boy ROM");
         }
         this.checksum = new RomChecksum(this.romData, this);
+
+        // Calculate validity flags for file-based ROMs
+        this.headerChecksumValid = checksum.verifyHeaderChecksum();
+        this.globalChecksumValid = checksum.verifyGlobalChecksum();
+        this.bootLogoValid = Arrays.equals(
+                Arrays.copyOfRange(romData, 0x104, 0x134),
+                RomSpecification.BOOT_LOGO
+        );
     }
 
     /**
@@ -62,6 +73,9 @@ public class RomReader {
     public RomReader(Collection rom) {
         this.loadFromDatabase = true;
         this.databaseName = rom.getName();
+        this.headerChecksumValid = rom.isHeaderChecksumValid();
+        this.globalChecksumValid = rom.isGlobalChecksumValid();
+        this.bootLogoValid = rom.isBootLogoValid();
 
         // Create minimal ROM data structure
         byte[] minData = new byte[0x150];
@@ -137,6 +151,9 @@ public class RomReader {
      * @return true if the Logo matches specification, false otherwise
      */
     public boolean getLogo() {
+        if (loadFromDatabase) {
+            return bootLogoValid;
+        }
         // The Logo is stored at offset 0x104 - 0x133 (48 bytes)
         byte[] logo = Arrays.copyOfRange(romData, 0x104, 0x134);
 
@@ -318,6 +335,9 @@ public class RomReader {
      * @return true if Header Checksum is valid, false otherwise
      */
     public boolean verifyHeaderChecksum() {
+        if (loadFromDatabase) {
+            return headerChecksumValid;
+        }
         return checksum.verifyHeaderChecksum();
     }
 
@@ -352,6 +372,9 @@ public class RomReader {
      * @return true if checksum is valid, false otherwise
      */
     public boolean verifyGlobalChecksum() {
+        if (loadFromDatabase) {
+            return globalChecksumValid;
+        }
         return checksum.verifyGlobalChecksum();
     }
 

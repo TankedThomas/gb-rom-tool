@@ -1,5 +1,6 @@
 package com.gare.gbromtool;
 
+import java.io.File;
 import java.io.IOException;
 import org.junit.Before;
 import org.junit.Test;
@@ -287,6 +288,43 @@ public class DatabaseManagerTest {
     }
 
     /**
+     * Tests RomReader file loading with validity checks.
+     *
+     * @throws IOException
+     */
+    @Test
+    public void testFileValidity() throws IOException {
+        // Create test ROM file with invalid checksum
+        byte[] romData = new byte[0x150];
+        System.arraycopy(RomSpecification.BOOT_LOGO, 0, romData, 0x104, RomSpecification.BOOT_LOGO.length);
+        // Set an invalid header checksum
+        romData[0x14D] = (byte) 0xFF;
+
+        File testFile = TestUtils.createTestRom(romData);
+        RomReader reader = new RomReader(testFile);
+
+        assertFalse("Should detect invalid header checksum", reader.verifyHeaderChecksum());
+        assertTrue("Should have valid boot logo", reader.getLogo());
+    }
+
+    /**
+     * Tests that validity flags are properly transferred when creating
+     * Collection from RomReader.
+     *
+     * @throws IOException
+     */
+    @Test
+    public void testFromRomReaderValidityFlags() throws IOException {
+        RomReader reader = TestUtils.createTestRomReader("TESTGAME");
+        Collection rom = Collection.fromRomReader(reader, "Test Name");
+
+        // The test ROM should have valid checksums and boot logo
+        assertTrue("Header checksum validity not transferred", rom.isHeaderChecksumValid());
+        assertTrue("Global checksum validity not transferred", rom.isGlobalChecksumValid());
+        assertTrue("Boot logo validity not transferred", rom.isBootLogoValid());
+    }
+
+    /**
      * Tests Collection table structure.
      * Verifies that all required columns exist with correct names.
      *
@@ -301,7 +339,8 @@ public class DatabaseManagerTest {
         String[] expectedColumns = {
             "TITLE", "NAME", "MFT_CODE", "TYPE_CODE", "ROM_REV",
             "ROM_SIZE_CODE", "RAM_SIZE_CODE", "SGB_FLAG", "CGB_FLAG",
-            "DEST_CODE", "LICENSEE_CODE", "HEAD_CHKSM", "GLOBAL_CHKSM"
+            "DEST_CODE", "LICENSEE_CODE", "HEAD_CHKSM", "HEAD_CHKSM_VALID",
+            "GLOBAL_CHKSM", "GLOBAL_CHKSM_VALID", "BOOT_LOGO_VALID"
         };
 
         int columnCount = 0;

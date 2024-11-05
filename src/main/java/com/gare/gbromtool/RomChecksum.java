@@ -37,10 +37,6 @@ public class RomChecksum {
      * @return true if the checksums match, false otherwise
      */
     public boolean verifyHeaderChecksum() {
-        if (reader.getLoadFromDatabase()) {
-            return true;
-        }
-
         int checksum = 0;
         for (int address = 0x0134; address <= 0x014C; address++) {
             checksum = checksum - (romData[address] & 0xFF) - 1;
@@ -59,10 +55,6 @@ public class RomChecksum {
      * @return true if the checksums match, false otherwise
      */
     public boolean verifyGlobalChecksum() {
-        if (reader.getLoadFromDatabase()) {
-            return true;
-        }
-
         int checksum = 0;
         // Sum all bytes except the checksum bytes themselves
         for (int i = 0; i < romData.length; i++) {

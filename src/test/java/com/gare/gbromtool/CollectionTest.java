@@ -33,12 +33,18 @@ public class CollectionTest {
                 0,
                 SAMPLE_BYTES,
                 SAMPLE_BYTES,
-                SAMPLE_BYTES
+                true,
+                SAMPLE_BYTES,
+                true,
+                true
         );
 
         assertEquals("Test Name", rom.getName());
         assertEquals("Test Title", rom.getTitle());
         assertTrue(Arrays.equals(SAMPLE_BYTES, rom.getTypeCode()));
+        assertTrue(rom.isHeaderChecksumValid());
+        assertTrue(rom.isGlobalChecksumValid());
+        assertTrue(rom.isBootLogoValid());
     }
 
     /**
@@ -63,7 +69,10 @@ public class CollectionTest {
                 0,
                 SAMPLE_BYTES,
                 SAMPLE_BYTES,
-                SAMPLE_BYTES
+                true,
+                SAMPLE_BYTES,
+                true,
+                true
         );
     }
 
@@ -92,7 +101,10 @@ public class CollectionTest {
                 0,
                 SAMPLE_BYTES,
                 SAMPLE_BYTES,
-                SAMPLE_BYTES
+                true,
+                SAMPLE_BYTES,
+                true,
+                true
         );
     }
 
@@ -119,7 +131,10 @@ public class CollectionTest {
                 0,
                 SAMPLE_BYTES,
                 SAMPLE_BYTES,
-                SAMPLE_BYTES
+                true,
+                SAMPLE_BYTES,
+                true,
+                true
         );
 
         // Modify original array
@@ -167,7 +182,10 @@ public class CollectionTest {
                 0,
                 SAMPLE_BYTES,
                 SAMPLE_BYTES,
-                SAMPLE_BYTES
+                true,
+                SAMPLE_BYTES,
+                true,
+                true
         );
     }
 
@@ -191,7 +209,10 @@ public class CollectionTest {
                 0,
                 SAMPLE_BYTES,
                 SAMPLE_BYTES,
-                SAMPLE_BYTES
+                true,
+                SAMPLE_BYTES,
+                true,
+                true
         );
     }
 
@@ -218,7 +239,10 @@ public class CollectionTest {
                 0,
                 SAMPLE_BYTES,
                 SAMPLE_BYTES,
-                SAMPLE_BYTES
+                true,
+                SAMPLE_BYTES,
+                true,
+                true
         );
 
         // Test constructor's defensive copy

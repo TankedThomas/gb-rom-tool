@@ -29,7 +29,10 @@ public class Collection {
     private final int destCode;
     private final byte[] licenseeCode;
     private final byte[] headerChecksum;
+    private final boolean headerChecksumValid;
     private final byte[] globalChecksum;
+    private final boolean globalChecksumValid;
+    private final boolean bootLogoValid;
 
     /**
      * Creates a new Collection entity with the specified ROM data.
@@ -46,7 +49,10 @@ public class Collection {
      * @param destCode Destination Code
      * @param licenseeCode Licensee Code
      * @param headerChecksum Header Checksum
+     * @param headerChecksumValid Header Checksum validity
      * @param globalChecksum Global Checksum
+     * @param globalChecksumValid Global Checksum validity
+     * @param bootLogoValid Boot Logo validity
      * @throws IllegalArgumentException if name or title exceed maximum length
      */
     public Collection(
@@ -62,7 +68,10 @@ public class Collection {
             int destCode,
             byte[] licenseeCode,
             byte[] headerChecksum,
-            byte[] globalChecksum) {
+            boolean headerChecksumValid,
+            byte[] globalChecksum,
+            boolean globalChecksumValid,
+            boolean bootLogoValid) {
 
         if (name == null || title == null) {
             throw new IllegalArgumentException("Name and title cannot be null");
@@ -88,7 +97,10 @@ public class Collection {
         this.destCode = destCode;
         this.licenseeCode = licenseeCode.clone();
         this.headerChecksum = headerChecksum.clone();
+        this.headerChecksumValid = headerChecksumValid;
         this.globalChecksum = globalChecksum.clone();
+        this.globalChecksumValid = globalChecksumValid;
+        this.bootLogoValid = bootLogoValid;
     }
 
     // Getters
@@ -177,10 +189,31 @@ public class Collection {
     }
 
     /**
+     * @return true if the Header Checksum is valid, false otherwise
+     */
+    public boolean isHeaderChecksumValid() {
+        return headerChecksumValid;
+    }
+
+    /**
      * @return a copy of the Global Checksum
      */
     public byte[] getGlobalChecksum() {
         return globalChecksum.clone();
+    }
+
+    /**
+     * @return true if the Global Checksum is valid, false otherwise
+     */
+    public boolean isGlobalChecksumValid() {
+        return globalChecksumValid;
+    }
+
+    /**
+     * @return true if the Boot Logo is valid, false otherwise
+     */
+    public boolean isBootLogoValid() {
+        return bootLogoValid;
     }
 
     /**
@@ -208,7 +241,10 @@ public class Collection {
                 reader.getDestinationCode(),
                 reader.getLicenseeCode(),
                 reader.getHeaderChecksum(),
-                reader.getGlobalChecksum()
+                reader.verifyHeaderChecksum(),
+                reader.getGlobalChecksum(),
+                reader.verifyGlobalChecksum(),
+                reader.getLogo()
         );
     }
 }

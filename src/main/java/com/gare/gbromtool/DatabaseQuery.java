@@ -199,8 +199,9 @@ public class DatabaseQuery {
                     INSERT INTO Collection (
                         title, name, mft_code, type_code, rom_rev, 
                         rom_size_code, ram_size_code, sgb_flag, cgb_flag, 
-                        dest_code, licensee_code, head_chksm, global_chksm
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        dest_code, licensee_code, head_chksm, head_chksm_valid, 
+                        global_chksm, global_chksm_valid, boot_logo_valid
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """;
 
         try (PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -216,7 +217,10 @@ public class DatabaseQuery {
             stmt.setInt(10, rom.getDestCode());
             stmt.setBytes(11, rom.getLicenseeCode());
             stmt.setBytes(12, rom.getHeaderChecksum());
-            stmt.setBytes(13, rom.getGlobalChecksum());
+            stmt.setBoolean(13, rom.isHeaderChecksumValid());
+            stmt.setBytes(14, rom.getGlobalChecksum());
+            stmt.setBoolean(15, rom.isGlobalChecksumValid());
+            stmt.setBoolean(16, rom.isBootLogoValid());
 
             int rowsAffected = stmt.executeUpdate();
             return rowsAffected > 0;
@@ -321,7 +325,10 @@ public class DatabaseQuery {
                         rs.getInt("dest_code"),
                         rs.getBytes("licensee_code"),
                         rs.getBytes("head_chksm"),
-                        rs.getBytes("global_chksm")
+                        rs.getBoolean("head_chksm_valid"),
+                        rs.getBytes("global_chksm"),
+                        rs.getBoolean("global_chksm_valid"),
+                        rs.getBoolean("boot_logo_valid")
                 );
                 roms.add(rom);
             }

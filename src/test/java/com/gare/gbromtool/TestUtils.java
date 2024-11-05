@@ -41,6 +41,23 @@ public final class TestUtils {
         romData[0x148] = 0x02;  // 128KiB ROM
         romData[0x149] = 0x03;  // 32KiB RAM
 
+        // Calculate and set valid header checksum
+        int checksum = 0;
+        for (int address = 0x0134; address <= 0x014C; address++) {
+            checksum = checksum - (romData[address] & 0xFF) - 1;
+        }
+        romData[0x14D] = (byte) (checksum & 0xFF);  // Set valid header checksum
+
+        // Calculate and set valid global checksum
+        int globalChecksum = 0;
+        for (int i = 0; i < romData.length; i++) {
+            if (i != 0x14E && i != 0x14F) {
+                globalChecksum += (romData[i] & 0xFF);
+            }
+        }
+        romData[0x14E] = (byte) ((globalChecksum >> 8) & 0xFF);  // High byte
+        romData[0x14F] = (byte) (globalChecksum & 0xFF);         // Low byte
+
         // Write complete ROM data at once
         try (FileOutputStream fos = new FileOutputStream(testFile)) {
             // Write base ROM data

@@ -275,7 +275,10 @@ public class DatabaseManager {
                         + "dest_code INT,"
                         + "licensee_code CHAR(2) FOR BIT DATA,"
                         + "head_chksm CHAR(2) FOR BIT DATA,"
+                        + "head_chksm_valid BOOLEAN,"
                         + "global_chksm CHAR(2) FOR BIT DATA,"
+                        + "global_chksm_valid BOOLEAN,"
+                        + "boot_logo_valid BOOLEAN,"
                         + "PRIMARY KEY (title, rom_rev, global_chksm)"
                         + ")");
                 conn.commit();

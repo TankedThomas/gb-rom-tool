@@ -5,6 +5,7 @@ import org.junit.Test;
 import static org.junit.Assert.*;
 
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import org.junit.After;
 import org.junit.Before;
@@ -99,7 +100,10 @@ public class DatabaseIntegrationTest {
                 testRom.getDestCode(),
                 testRom.getLicenseeCode(),
                 testRom.getHeaderChecksum(),
-                testRom.getGlobalChecksum()
+                testRom.isHeaderChecksumValid(),
+                testRom.getGlobalChecksum(),
+                testRom.isGlobalChecksumValid(),
+                testRom.isBootLogoValid()
         );
 
         assertTrue("Failed to update ROM", dbQuery.updateRomInCollection(updatedRom));
@@ -132,7 +136,10 @@ public class DatabaseIntegrationTest {
                 testRom.getDestCode(),
                 testRom.getLicenseeCode(),
                 testRom.getHeaderChecksum(),
-                testRom.getGlobalChecksum()
+                testRom.isHeaderChecksumValid(),
+                testRom.getGlobalChecksum(),
+                testRom.isGlobalChecksumValid(),
+                testRom.isBootLogoValid()
         );
 
         // Save second version
@@ -199,10 +206,100 @@ public class DatabaseIntegrationTest {
                 testRom.getDestCode(),
                 testRom.getLicenseeCode(),
                 testRom.getHeaderChecksum(),
-                testRom.getGlobalChecksum()
+                testRom.isHeaderChecksumValid(),
+                testRom.getGlobalChecksum(),
+                testRom.isGlobalChecksumValid(),
+                testRom.isBootLogoValid()
         );
 
         // This should throw SQLException due to data being too large for the column
         dbQuery.saveRomToCollection(invalidRom);
+    }
+
+    /**
+     * Tests that validation flags are correctly saved and retrieved from the
+     * database.
+     *
+     * @throws SQLException if database operations fail
+     * @throws IOException if ROM file operations fail
+     */
+    @Test
+    public void testValidationFlags() throws SQLException, IOException {
+        // Create ROMs with different validation states
+        Collection validRom = new Collection(
+                "Valid ROM",
+                "TEST1",
+                "ABCD",
+                testRom.getTypeCode(),
+                testRom.getRomRev(),
+                testRom.getRomSizeCode(),
+                testRom.getRamSizeCode(),
+                testRom.getSgbFlag(),
+                testRom.getCgbFlag(),
+                testRom.getDestCode(),
+                testRom.getLicenseeCode(),
+                testRom.getHeaderChecksum(),
+                true, // Valid header checksum
+                testRom.getGlobalChecksum(),
+                true, // Valid global checksum
+                true // Valid boot logo
+        );
+
+        Collection invalidRom = new Collection(
+                "Invalid ROM",
+                "TEST2",
+                "ABCD",
+                testRom.getTypeCode(),
+                testRom.getRomRev(),
+                testRom.getRomSizeCode(),
+                testRom.getRamSizeCode(),
+                testRom.getSgbFlag(),
+                testRom.getCgbFlag(),
+                testRom.getDestCode(),
+                testRom.getLicenseeCode(),
+                testRom.getHeaderChecksum(),
+                false, // Invalid header checksum
+                testRom.getGlobalChecksum(),
+                false, // Invalid global checksum
+                false // Invalid boot logo
+        );
+
+        // Save both ROMs
+        assertTrue(dbQuery.saveRomToCollection(validRom));
+        assertTrue(dbQuery.saveRomToCollection(invalidRom));
+
+        // Retrieve and verify
+        ArrayList<Collection> roms = dbQuery.getAllRoms();
+        assertEquals("Should have saved two ROMs", 2, roms.size());
+
+        // Find the ROMs in the results (they might be in any order)
+        Collection retrievedValid = null;
+        Collection retrievedInvalid = null;
+        for (Collection rom : roms) {
+            if (rom.getName().equals("Valid ROM")) {
+                retrievedValid = rom;
+            } else if (rom.getName().equals("Invalid ROM")) {
+                retrievedInvalid = rom;
+            }
+        }
+
+        assertNotNull("Valid ROM should be retrieved", retrievedValid);
+        assertNotNull("Invalid ROM should be retrieved", retrievedInvalid);
+
+        // Verify valid ROM flags
+        assertTrue("Valid ROM header checksum flag not preserved",
+                retrievedValid.isHeaderChecksumValid());
+        assertTrue("Valid ROM global checksum flag not preserved",
+                retrievedValid.isGlobalChecksumValid());
+        assertTrue("Valid ROM boot logo flag not preserved",
+                retrievedValid.isBootLogoValid());
+
+        // Verify invalid ROM flags
+        assertFalse("Invalid ROM header checksum flag not preserved",
+                retrievedInvalid.isHeaderChecksumValid());
+        assertFalse("Invalid ROM global checksum flag not preserved",
+                retrievedInvalid.isGlobalChecksumValid());
+        assertFalse("Invalid ROM boot logo flag not preserved",
+                retrievedInvalid.isBootLogoValid());
     }
 }
