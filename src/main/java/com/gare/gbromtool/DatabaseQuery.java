@@ -144,32 +144,61 @@ public class DatabaseQuery {
      * length
      */
     public String getLicenseeCode(byte[] licenseeCode) throws SQLException {
+        // Check length before trimming
         if (licenseeCode == null) {
             throw new IllegalArgumentException("Licensee Code cannot be null");
         }
+        if (licenseeCode.length != 1 && licenseeCode.length != 2) {
+            throw new IllegalArgumentException("Invalid Licensee Code length: " + licenseeCode.length);
+        }
 
-        System.out.println("License Code length: " + licenseeCode.length); // Debug
-        System.out.println("License Code hex: " + HexFormat.of().formatHex(licenseeCode).toUpperCase()); // Debug
+        // Trim any padding bytes (0x00 or 0x20)
+        int actualLength = licenseeCode.length;
+        while (actualLength > 1 && (licenseeCode[actualLength - 1] == 0x00 || licenseeCode[actualLength - 1] == 0x20)) {
+            actualLength--;
+        }
+
+        // Check if this is actually a New Licensee Code (ASCII)
+        boolean isNewFormat = actualLength == 2
+                && Character.isLetterOrDigit((char) licenseeCode[0])
+                && Character.isLetterOrDigit((char) licenseeCode[1]);
+
+        // Create trimmed array if necessary
+        byte[] trimmedCode;
+        if (actualLength < licenseeCode.length) {
+            trimmedCode = new byte[actualLength];
+            System.arraycopy(licenseeCode, 0, trimmedCode, 0, actualLength);
+        } else {
+            trimmedCode = licenseeCode;
+        }
+
+        // Debug output for Licensee Code type
+        System.out.println("Is new format: " + isNewFormat);
+        if (isNewFormat) {
+            System.out.println("License Code length: " + licenseeCode.length);
+            System.out.println("License Code hex: " + HexFormat.of().formatHex(licenseeCode).toUpperCase());
+        } else {
+            System.out.println("Original length: " + licenseeCode.length);
+            System.out.println("Trimmed length: " + actualLength);
+            System.out.println("Original code: " + HexFormat.of().formatHex(licenseeCode));
+            System.out.println("Trimmed code: " + HexFormat.of().formatHex(trimmedCode));
+        }
 
         String query;
         PreparedStatement stmt;
 
         try {
-            switch (licenseeCode.length) {
-                case 1 -> {
-                    query = "SELECT publisher FROM OldLicenseeCode WHERE licensee_code = ?";
-                    stmt = conn.prepareStatement(query);
-                    stmt.setBytes(1, licenseeCode);
-                    System.out.println("Using Old Licensee Code"); // Debug
-                }
-                case 2 -> {
-                    query = "SELECT publisher FROM NewLicenseeCode WHERE licensee_code = ?";
-                    stmt = conn.prepareStatement(query);
-                    stmt.setBytes(1, licenseeCode);
-                    System.out.println("Using New Licensee Code"); // Debug
-                }
-                default ->
-                    throw new IllegalArgumentException("Invalid Licensee Code length: " + licenseeCode.length);
+            // If it's a single byte or not in ASCII format, use old licensee codes
+            if (!isNewFormat) {
+                query = "SELECT publisher FROM OldLicenseeCode WHERE licensee_code = ?";
+                stmt = conn.prepareStatement(query);
+                stmt.setBytes(1, new byte[]{trimmedCode[0]});  // Only use first byte
+                System.out.println("Using Old Licensee Code");
+            } else {
+                query = "SELECT publisher FROM NewLicenseeCode WHERE licensee_code = ?";
+                stmt = conn.prepareStatement(query);
+                stmt.setBytes(1, trimmedCode);
+                System.out.println("Using New Licensee Code");
             }
 
             try (stmt) {
@@ -215,7 +244,14 @@ public class DatabaseQuery {
             stmt.setBoolean(8, rom.getSgbFlag());
             stmt.setBytes(9, rom.getCgbFlag());
             stmt.setInt(10, rom.getDestCode());
-            stmt.setBytes(11, rom.getLicenseeCode());
+            // For Licensee Code, ensure single bytes aren't padded
+            byte[] licenseeCode = rom.getLicenseeCode();
+            if (licenseeCode.length == 1) {
+                // For single-byte codes, create a properly sized CHAR(2) that won't be padded
+                stmt.setBytes(11, new byte[]{licenseeCode[0], 0x00});
+            } else {
+                stmt.setBytes(11, licenseeCode);
+            }
             stmt.setBytes(12, rom.getHeaderChecksum());
             stmt.setBoolean(13, rom.isHeaderChecksumValid());
             stmt.setBytes(14, rom.getGlobalChecksum());
