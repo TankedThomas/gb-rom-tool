@@ -6,7 +6,7 @@
 
     <groupId>com.gare.gbromtool</groupId>
     <artifactId>gb-rom-tool</artifactId>
-    <version>2.1-RELEASE</version>
+    <version>2.2-RELEASE</version>
     <packaging>jar</packaging>
 
     <properties>
