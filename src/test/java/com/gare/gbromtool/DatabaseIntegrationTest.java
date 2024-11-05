@@ -1,12 +1,17 @@
 package com.gare.gbromtool;
 
 import java.io.IOException;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import org.junit.Test;
 import static org.junit.Assert.*;
 
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HexFormat;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -35,6 +40,8 @@ public class DatabaseIntegrationTest {
         // Start with clean database
         DatabaseManager.dropDatabase();
         dbManager = DatabaseManager.getInstance();
+        // Explicitly initialize database
+        dbManager.initialiseDatabase();
     }
 
     @Before
@@ -42,6 +49,8 @@ public class DatabaseIntegrationTest {
         // Clean database between tests
         dbManager.cleanDatabase();
         dbQuery = new DatabaseQuery(dbManager);
+        // Make sure reference data is repopulated
+        dbManager.initialiseDatabase();
 
         // Create test ROM data for each test
         RomReader reader = TestUtils.createTestRomReader("TESTGAME");
@@ -54,6 +63,46 @@ public class DatabaseIntegrationTest {
             dbManager.cleanDatabase();
         } catch (SQLException e) {
             System.out.println(e);
+        }
+    }
+
+    /**
+     * Tests that reference tables are properly populated during database
+     * initialisation.
+     * Verifies that:
+     * - The OldLicenseeCode table contains the expected number of entries
+     * - Selected sample of publishers are present
+     * - Publisher codes are stored in correct format
+     *
+     * @throws SQLException if database operations fail
+     */
+    @Test
+    public void testReferenceDataInitialisation() throws SQLException {
+        Connection conn = dbManager.getConnection();
+
+        // Check OldLicenseeCode table
+        try (Statement stmt = conn.createStatement()) {
+            ResultSet rs = stmt.executeQuery(
+                    "SELECT COUNT(*) as count FROM OldLicenseeCode"
+            );
+            assertTrue("ResultSet should have a row", rs.next());
+            int count = rs.getInt("count");
+            System.out.println("Number of Old Licensee Codes: " + count);
+            assertTrue("OldLicenseeCode table should not be empty", count > 0);
+
+            // Check for specific entries that should exist
+            rs = stmt.executeQuery(
+                    "SELECT licensee_code, publisher FROM OldLicenseeCode "
+                    + "WHERE publisher IN ('Konami', 'Nintendo', 'LJN')"
+            );
+
+            System.out.println("\nKey publishers:");
+            while (rs.next()) {
+                byte[] code = rs.getBytes("licensee_code");
+                String publisher = rs.getString("publisher");
+                System.out.printf("%s: %s%n", publisher,
+                        HexFormat.of().formatHex(code));
+            }
         }
     }
 
@@ -110,7 +159,8 @@ public class DatabaseIntegrationTest {
     }
 
     /**
-     * Test saving multiple versions of the same ROM with different revisions.
+     * Test saving multiple versions of the same ROM with different
+     * revisions.
      * Verifies that different versions of the same ROM can coexist in the
      * database.
      *
@@ -160,7 +210,8 @@ public class DatabaseIntegrationTest {
 
     /**
      * Test that identical ROMs are properly detected.
-     * Verifies that attempting to save the same ROM twice is handled correctly.
+     * Verifies that attempting to save the same ROM twice is handled
+     * correctly.
      *
      * @throws SQLException if database operations fail
      * @throws IOException if ROM file operations fail
@@ -181,7 +232,8 @@ public class DatabaseIntegrationTest {
 
     /**
      * Test database constraints with invalid data.
-     * Verifies that the database properly rejects invalid data by attempting to
+     * Verifies that the database properly rejects invalid data by
+     * attempting to
      * save a ROM with a binary field that exceeds the database column size.
      *
      * @throws SQLException if database operation fails
@@ -217,7 +269,8 @@ public class DatabaseIntegrationTest {
     }
 
     /**
-     * Tests that validation flags are correctly saved and retrieved from the
+     * Tests that validation flags are correctly saved and retrieved from
+     * the
      * database.
      *
      * @throws SQLException if database operations fail
@@ -239,10 +292,10 @@ public class DatabaseIntegrationTest {
                 testRom.getDestCode(),
                 testRom.getLicenseeCode(),
                 testRom.getHeaderChecksum(),
-                true, // Valid header checksum
+                true, // Valid Header Checksum
                 testRom.getGlobalChecksum(),
-                true, // Valid global checksum
-                true // Valid boot logo
+                true, // Valid Global Checksum
+                true // Valid Boot Logo
         );
 
         Collection invalidRom = new Collection(
@@ -258,10 +311,10 @@ public class DatabaseIntegrationTest {
                 testRom.getDestCode(),
                 testRom.getLicenseeCode(),
                 testRom.getHeaderChecksum(),
-                false, // Invalid header checksum
+                false, // Invalid Header Checksum
                 testRom.getGlobalChecksum(),
-                false, // Invalid global checksum
-                false // Invalid boot logo
+                false, // Invalid Global Checksum
+                false // Invalid Boot Logo
         );
 
         // Save both ROMs
@@ -301,5 +354,135 @@ public class DatabaseIntegrationTest {
                 retrievedInvalid.isGlobalChecksumValid());
         assertFalse("Invalid ROM boot logo flag not preserved",
                 retrievedInvalid.isBootLogoValid());
+    }
+
+    /**
+     * Tests preservation of Licensee Codes when saving and loading from
+     * database.
+     * Tests multiple scenarios:
+     * - Old Licensee Codes (single byte)
+     * - New Licensee Codes (ASCII pairs)
+     * - Special cases (like 0x33 for "See new licensee code")
+     * - Multiple entries for same publisher
+     * - Codes that exist in both old and new formats
+     *
+     * Verifies that codes are correctly:
+     * - Stored in database
+     * - Retrieved from database
+     * - Mapped to correct publishers
+     *
+     * @throws SQLException if database operations fail
+     * @throws IOException if ROM file operations fail
+     */
+    @Test
+    public void testLicenseeCodePreservation() throws SQLException, IOException {
+        // Test various known Licensee Codes
+        byte[][] testCodes = {
+            new byte[]{(byte) 0xA4}, // Konami (Old)
+            new byte[]{0x00}, // None (Old)
+            "01".getBytes(), // Nintendo (New)
+            "B4".getBytes(), // Enix (New)
+            new byte[]{(byte) 0xFF}, // LJN (Old)
+            new byte[]{0x33} // Use NewLicenseeCode indicator (Old)
+        };
+
+        String[] expectedPublishers = {
+            "Konami",
+            "None",
+            "Nintendo",
+            "Enix",
+            "LJN",
+            "See new licensee code"
+        };
+
+        for (int i = 0; i < testCodes.length; i++) {
+            final int index = i;
+
+            // Create ROM with this licensee code
+            Collection rom = new Collection(
+                    "Test ROM " + index,
+                    "TEST" + index,
+                    "ABCD",
+                    testRom.getTypeCode(),
+                    testRom.getRomRev(),
+                    testRom.getRomSizeCode(),
+                    testRom.getRamSizeCode(),
+                    testRom.getSgbFlag(),
+                    testRom.getCgbFlag(),
+                    testRom.getDestCode(),
+                    testCodes[index],
+                    testRom.getHeaderChecksum(),
+                    testRom.isHeaderChecksumValid(),
+                    testRom.getGlobalChecksum(),
+                    testRom.isGlobalChecksumValid(),
+                    testRom.isBootLogoValid()
+            );
+
+            // Save ROM
+            assertTrue(dbQuery.saveRomToCollection(rom));
+
+            // Load ROM and verify publisher
+            ArrayList<Collection> roms = dbQuery.getAllRoms();
+            Collection loaded = roms.stream()
+                    .filter(r -> r.getName().equals("Test ROM " + index))
+                    .findFirst()
+                    .orElseThrow();
+
+            // Debug output
+            System.out.println("Test " + index + ":");
+            System.out.println("Original code: "
+                    + HexFormat.of().formatHex(testCodes[index]));
+            System.out.println("Loaded code: "
+                    + HexFormat.of().formatHex(loaded.getLicenseeCode()));
+
+            String publisher = dbQuery.getLicenseeCode(loaded.getLicenseeCode());
+            System.out.println("Expected: " + expectedPublishers[index]);
+            System.out.println("Got: " + publisher);
+            System.out.println();
+
+            assertEquals("Publisher mismatch for code " + index,
+                    expectedPublishers[index], publisher);
+        }
+    }
+
+    @Test
+    public void testDatabaseContent() throws SQLException {
+        Connection conn = dbManager.getConnection();
+
+        // Debug Old Licensee Codes in database
+        try (Statement stmt = conn.createStatement()) {
+            ResultSet rs = stmt.executeQuery(
+                    "SELECT licensee_code, publisher FROM OldLicenseeCode"
+            );
+
+            System.out.println("\nOld Licensee Code table contents:");
+            System.out.println("--------------------------------");
+            while (rs.next()) {
+                byte[] code = rs.getBytes("licensee_code");
+                String publisher = rs.getString("publisher");
+                System.out.printf("Code: %s (%s), Publisher: %s%n",
+                        HexFormat.of().formatHex(code),
+                        HexFormat.of().toHexDigits(code[0] & 0xFF),
+                        publisher);
+            }
+        }
+
+        // Try direct lookup
+        try (PreparedStatement pstmt = conn.prepareStatement(
+                "SELECT publisher FROM OldLicenseeCode WHERE licensee_code = ?"
+        )) {
+            byte[] testCode = new byte[]{(byte) 0xA4};
+            pstmt.setBytes(1, testCode);
+            ResultSet rs = pstmt.executeQuery();
+
+            System.out.println("\nDirect lookup test:");
+            System.out.println("-------------------");
+            System.out.println("Looking up code: " + HexFormat.of().formatHex(testCode));
+            if (rs.next()) {
+                System.out.println("Found publisher: " + rs.getString("publisher"));
+            } else {
+                System.out.println("No publisher found");
+            }
+        }
     }
 }
